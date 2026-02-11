@@ -67,11 +67,15 @@ feature_a <- dbGetQuery(con, "
     -- Past tense participles with masculine (m1) or feminine (f) gender
     SELECT post_id, token_order,
            CASE
-             WHEN ctag LIKE 'praet:sg:%:m1%' THEN 'M'
-             WHEN ctag LIKE 'praet:sg:%:f%'  THEN 'K'
+             WHEN ctag LIKE 'praet:sg:m1%'
+               OR ctag LIKE 'praet:sg:%:m1%' THEN 'M'
+             WHEN ctag LIKE 'praet:sg:f%'
+               OR ctag LIKE 'praet:sg:%:f%'  THEN 'K'
            END AS gender_marker
     FROM post_lpmn_tokens
-    WHERE ctag LIKE 'praet:sg:%:m1%'
+    WHERE ctag LIKE 'praet:sg:m1%'
+       OR ctag LIKE 'praet:sg:%:m1%'
+       OR ctag LIKE 'praet:sg:f%'
        OR ctag LIKE 'praet:sg:%:f%'
   ),
   -- Join: find praet token near (~3 tokens) an aglt token in the same post
@@ -148,11 +152,15 @@ feature_b <- dbGetQuery(con, "
     -- Nominative singular adjectives with gender marking
     SELECT post_id, token_order,
            CASE
-             WHEN ctag LIKE 'adj:sg:nom:%:m1%' THEN 'M'
-             WHEN ctag LIKE 'adj:sg:nom:%:f%'  THEN 'K'
+             WHEN ctag LIKE 'adj:sg:nom:m1%'
+               OR ctag LIKE 'adj:sg:nom:%:m1%' THEN 'M'
+             WHEN ctag LIKE 'adj:sg:nom:f%'
+               OR ctag LIKE 'adj:sg:nom:%:f%'  THEN 'K'
            END AS gender_marker
     FROM post_lpmn_tokens
-    WHERE ctag LIKE 'adj:sg:nom:%:m1%'
+    WHERE ctag LIKE 'adj:sg:nom:m1%'
+       OR ctag LIKE 'adj:sg:nom:%:m1%'
+       OR ctag LIKE 'adj:sg:nom:f%'
        OR ctag LIKE 'adj:sg:nom:%:f%'
   ),
   -- Join: adjective within 5 tokens of copula in the same post
@@ -218,22 +226,33 @@ feature_c <- dbGetQuery(con, "
     -- Past tense forms of 'zostać' in 1st person sg, gendered
     SELECT post_id, token_order,
            CASE
-             WHEN ctag LIKE 'praet:sg:%:m1%' THEN 'M'
-             WHEN ctag LIKE 'praet:sg:%:f%'  THEN 'K'
+             WHEN ctag LIKE 'praet:sg:m1%'
+               OR ctag LIKE 'praet:sg:%:m1%' THEN 'M'
+             WHEN ctag LIKE 'praet:sg:f%'
+               OR ctag LIKE 'praet:sg:%:f%'  THEN 'K'
            END AS gender_marker
     FROM post_lpmn_tokens
     WHERE lemma = 'zostać'
-      AND (ctag LIKE 'praet:sg:%:m1%' OR ctag LIKE 'praet:sg:%:f%')
+      AND (
+        ctag LIKE 'praet:sg:m1%'
+        OR ctag LIKE 'praet:sg:%:m1%'
+        OR ctag LIKE 'praet:sg:f%'
+        OR ctag LIKE 'praet:sg:%:f%'
+      )
   ),
   ppas_gendered AS (
     -- Passive participles in nominative singular, gendered
     SELECT post_id, token_order,
            CASE
-             WHEN ctag LIKE 'ppas:sg:nom:%:m1%' THEN 'M'
-             WHEN ctag LIKE 'ppas:sg:nom:%:f%'  THEN 'K'
+             WHEN ctag LIKE 'ppas:sg:nom:m1%'
+               OR ctag LIKE 'ppas:sg:nom:%:m1%' THEN 'M'
+             WHEN ctag LIKE 'ppas:sg:nom:f%'
+               OR ctag LIKE 'ppas:sg:nom:%:f%'  THEN 'K'
            END AS gender_marker
     FROM post_lpmn_tokens
-    WHERE ctag LIKE 'ppas:sg:nom:%:m1%'
+    WHERE ctag LIKE 'ppas:sg:nom:m1%'
+       OR ctag LIKE 'ppas:sg:nom:%:m1%'
+       OR ctag LIKE 'ppas:sg:nom:f%'
        OR ctag LIKE 'ppas:sg:nom:%:f%'
   ),
   -- Join: ppas within 5 tokens of zostać, genders must agree

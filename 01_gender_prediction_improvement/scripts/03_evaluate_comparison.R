@@ -351,6 +351,7 @@ metrics_long <- metrics_comparison |>
   select(model, accuracy, macro_precision, macro_recall, macro_f1, coverage) |>
   pivot_longer(cols = -model, names_to = "metric", values_to = "value") |>
   mutate(
+    value_plot = coalesce(value, 0),
     metric_label = case_match(
       metric,
       "accuracy"        ~ "Dokladnosc",
@@ -367,7 +368,7 @@ metrics_long <- metrics_comparison |>
 
 p_metrics <- ggplot(
   metrics_long,
-  aes(x = metric_label, y = value, fill = model)
+  aes(x = metric_label, y = value_plot, fill = model)
 ) +
   geom_col(position = position_dodge(width = 0.7), width = 0.6) +
   geom_text(
