@@ -44,14 +44,18 @@ users_db <- users_db_raw |>
   as_tibble() |>
   mutate(user_id = as.numeric(user_id))
 
-# CRITICAL FIX: Detach bit64/bit if loaded to restore base '==' and '%in%' operators
-if ("package:bit64" %in% search()) {
-  message("Detaching bit64 to restore base comparison operators...")
-  detach("package:bit64", unload = TRUE)
+# CRITICAL FIX: Detach bit64/bit from search path to restore base '==' and '%in%'
+# NOTE: Do not unload namespace because it may be imported by readr/vroom/RPostgres.
+detach_if_attached <- function(pkg) {
+  pkg_search_name <- paste0("package:", pkg)
+  if (pkg_search_name %in% search()) {
+    message("Detaching ", pkg, " from search path to restore base comparison operators...")
+    detach(pkg_search_name, unload = FALSE, character.only = TRUE)
+  }
 }
-if ("package:bit" %in% search()) {
-  detach("package:bit", unload = TRUE)
-}
+
+detach_if_attached("bit64")
+detach_if_attached("bit")
 
 # Load New predictions
 new_preds_path <- here::here("01_gender_prediction_improvement", "output", "data", "new_gender_predictions.csv")
