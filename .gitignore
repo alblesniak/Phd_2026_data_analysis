@@ -66,3 +66,7 @@ desktop.ini
 # Local archive or backup folder
 archive/
 
+
+# RStudio project file
+Phd_2026_data_analysis.Rproj
+

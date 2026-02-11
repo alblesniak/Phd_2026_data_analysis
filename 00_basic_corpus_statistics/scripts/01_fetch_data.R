@@ -1,59 +1,19 @@
 # =============================================================================
 # 01_fetch_data.R - Fetch aggregated data from PostgreSQL
 # =============================================================================
-# Connects to DB via .env credentials and retrieves pre-aggregated summaries.
-# No raw text is pulled -- all heavy lifting is done in SQL.
+# Connects to DB via db_connection.R and retrieves pre-aggregated summaries.
 # =============================================================================
 
-library(DBI)
-library(RPostgres)
-library(dotenv)
 library(dplyr)
 library(readr)
+library(here)
 
-# --- Load environment variables ---
-dotenv::load_dot_env(here::here(".env"))
-
-# --- Connect to database ---
-# Helper to try multiple environment variable names (first non-empty returned)
-get_env_first <- function(names, default = "") {
-  for (nm in names) {
-    val <- Sys.getenv(nm, unset = "")
-    if (!identical(val, "")) return(val)
-  }
-  default
-}
-
-connect_db <- function() {
-  host <- get_env_first(c("DB_HOST", "POSTGRES_HOST", "PGHOST"))
-  dbname <- get_env_first(c("DB_NAME", "POSTGRES_DB", "PGDATABASE"))
-  user <- get_env_first(c("DB_USER", "POSTGRES_USER", "PGUSER"))
-  password <- get_env_first(c("DB_PASS", "POSTGRES_PASSWORD", "PGPASSWORD"))
-  port <- as.integer(get_env_first(c("DB_PORT", "POSTGRES_PORT", "PGPORT"), "5432"))
-
-  info_msg <- paste0("DB connection parameters -> host='", ifelse(host=="","(socket/local)",host), "', dbname='", dbname, "', user='", user, "', port=", port)
-  message(info_msg)
-
-  tryCatch(
-    dbConnect(
-      Postgres(),
-      host = ifelse(host == "", NULL, host),
-      dbname = dbname,
-      user = user,
-      password = password,
-      port = port
-    ),
-    error = function(e) {
-      stop("Failed to connect to Postgres. Check DB_* or POSTGRES_* env vars and that the server is reachable. Original error: ", e$message)
-    }
-  )
-}
-
-con <- connect_db()
-message("Connected to database: ", get_env_first(c("DB_NAME", "POSTGRES_DB", "PGDATABASE")))
+# --- 1) Setup Database Connection ---
+# This script loads libs (DBI, RPostgres), .env, and creates 'con' object
+source(here::here("00_basic_corpus_statistics", "scripts", "db_connection.R"))
 
 # =============================================================================
-# 1) General counts
+# 2) General counts
 # =============================================================================
 
 total_posts <- dbGetQuery(con, "SELECT COUNT(*) AS n FROM posts")$n
@@ -72,7 +32,7 @@ general_counts <- tibble(
 message("General counts fetched.")
 
 # =============================================================================
-# 2) Posts per forum (with forum names)
+# 3) Posts per forum (with forum names)
 # =============================================================================
 
 posts_per_forum <- dbGetQuery(con, "
@@ -90,11 +50,10 @@ posts_per_forum <- dbGetQuery(con, "
 message("Posts per forum fetched.")
 
 # =============================================================================
-# 3) Threads per forum
+# 4) Threads per forum
 # =============================================================================
 
-threads_per_forum <- dbGetQuery(con, "
-  SELECT
+threads_per_forum <- dbGetQuery(con, "SELECT
     f.title AS forum,
     COUNT(t.id) AS n_threads
   FROM threads t
@@ -105,11 +64,10 @@ threads_per_forum <- dbGetQuery(con, "
 ") |> as_tibble()
 
 # =============================================================================
-# 4) Users per forum
+# 5) Users per forum
 # =============================================================================
 
-users_per_forum <- dbGetQuery(con, "
-  SELECT
+users_per_forum <- dbGetQuery(con, "SELECT
     f.title AS forum,
     COUNT(u.id) AS n_users
   FROM users u
@@ -119,11 +77,10 @@ users_per_forum <- dbGetQuery(con, "
 ") |> as_tibble()
 
 # =============================================================================
-# 5) Tokens per forum
+# 6) Tokens per forum
 # =============================================================================
 
-tokens_per_forum <- dbGetQuery(con, "
-  SELECT
+tokens_per_forum <- dbGetQuery(con, "SELECT
     f.title AS forum,
     COUNT(tk.id) AS n_tokens
   FROM post_lpmn_tokens tk
@@ -138,11 +95,10 @@ tokens_per_forum <- dbGetQuery(con, "
 message("Tokens per forum fetched.")
 
 # =============================================================================
-# 6) Posts per year (temporal analysis)
+# 7) Posts per year (temporal analysis)
 # =============================================================================
 
-posts_per_year <- dbGetQuery(con, "
-  SELECT
+posts_per_year <- dbGetQuery(con, "SELECT
     EXTRACT(YEAR FROM post_date)::integer AS rok,
     COUNT(*) AS n_posts
   FROM posts
@@ -154,11 +110,10 @@ posts_per_year <- dbGetQuery(con, "
 message("Posts per year fetched.")
 
 # =============================================================================
-# 7) Posts per year per forum
+# 8) Posts per year per forum
 # =============================================================================
 
-posts_per_year_forum <- dbGetQuery(con, "
-  SELECT
+posts_per_year_forum <- dbGetQuery(con, "SELECT
     f.title AS forum,
     EXTRACT(YEAR FROM p.post_date)::integer AS rok,
     COUNT(*) AS n_posts
@@ -172,11 +127,10 @@ posts_per_year_forum <- dbGetQuery(con, "
 ") |> as_tibble()
 
 # =============================================================================
-# 8) Date range
+# 9) Date range
 # =============================================================================
 
-date_range <- dbGetQuery(con, "
-  SELECT
+date_range <- dbGetQuery(con, "SELECT
     MIN(post_date) AS min_date,
     MAX(post_date) AS max_date
   FROM posts
@@ -188,11 +142,10 @@ corpus_max_date <- as.Date(date_range$max_date)
 message("Date range: ", corpus_min_date, " to ", corpus_max_date)
 
 # =============================================================================
-# 9) User activity distribution (posts per user)
+# 10) User activity distribution (posts per user)
 # =============================================================================
 
-user_activity <- dbGetQuery(con, "
-  SELECT
+user_activity <- dbGetQuery(con, "SELECT
     u.id AS user_id,
     f.title AS forum,
     COUNT(p.id) AS n_posts
@@ -206,11 +159,10 @@ user_activity <- dbGetQuery(con, "
 message("User activity fetched.")
 
 # =============================================================================
-# 10) Gender distribution
+# 11) Gender distribution
 # =============================================================================
 
-gender_distribution <- dbGetQuery(con, "
-  SELECT
+gender_distribution <- dbGetQuery(con, "SELECT
     f.title AS forum,
     COALESCE(NULLIF(gender, ''), 'brak danych') AS plec_deklarowana,
     COALESCE(NULLIF(pred_gender, ''), 'brak danych') AS plec_predykowana,

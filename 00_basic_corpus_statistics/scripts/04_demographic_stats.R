@@ -13,6 +13,12 @@ library(tidyr)
 # --- Source setup (if not already loaded) ---
 source(here::here("00_basic_corpus_statistics", "scripts", "00_setup_theme.R"))
 
+# --- Auto-load data if running independently ---
+if (!exists("user_activity")) {
+  message("Danych nie znaleziono w pamięci. Uruchamiam 01_fetch_data.R...")
+  source(here::here("00_basic_corpus_statistics", "scripts", "01_fetch_data.R"))
+}
+
 # =============================================================================
 # 1) User activity distribution (Zipf's law / Power law)
 # =============================================================================

@@ -56,23 +56,101 @@ theme_academic <- function(base_size = 12, base_family = "") {
 save_plot <- function(plot, filename, width = 10, height = 6, dpi = 300) {
   plots_dir <- here::here("00_basic_corpus_statistics", "output", "plots")
   dir.create(plots_dir, recursive = TRUE, showWarnings = FALSE)
+  # Save PNG: prefer ragg::agg_png for consistent raster output if available
+  png_path <- file.path(plots_dir, paste0(filename, ".png"))
+  if (requireNamespace("ragg", quietly = TRUE)) {
+    ggsave(
+      filename = png_path,
+      plot = plot,
+      width = width,
+      height = height,
+      dpi = dpi,
+      device = ragg::agg_png
+    )
+  } else {
+    ggsave(
+      filename = png_path,
+      plot = plot,
+      width = width,
+      height = height,
+      dpi = dpi,
+      bg = "white"
+    )
+  }
 
-  ggsave(
-    filename = file.path(plots_dir, paste0(filename, ".png")),
-    plot     = plot,
-    width    = width,
-    height   = height,
-    dpi      = dpi,
-    bg       = "white"
-  )
-
-  ggsave(
-    filename = file.path(plots_dir, paste0(filename, ".pdf")),
-    plot     = plot,
-    width    = width,
-    height   = height,
-    device   = cairo_pdf
-  )
+  # Save PDF: prefer ragg::agg_pdf if available (no XQuartz dependency).
+  pdf_path <- file.path(plots_dir, paste0(filename, ".pdf"))
+  if (requireNamespace("ragg", quietly = TRUE) && "agg_pdf" %in% getNamespaceExports("ragg")) {
+    ggsave(
+      filename = pdf_path,
+      plot = plot,
+      width = width,
+      height = height,
+      device = ragg::agg_pdf
+    )
+  } else if (requireNamespace("ragg", quietly = TRUE) && !("agg_pdf" %in% getNamespaceExports("ragg"))) {
+    # Older ragg versions may not export agg_pdf; use cairo if available, else base pdf
+    if (capabilities("cairo")) {
+      suppressWarnings(tryCatch(
+        ggsave(
+          filename = pdf_path,
+          plot = plot,
+          width = width,
+          height = height,
+          device = cairo_pdf
+        ),
+        error = function(e) {
+          warning("cairo PDF failed (", conditionMessage(e), ") — falling back to base PDF device")
+          ggsave(
+            filename = pdf_path,
+            plot = plot,
+            width = width,
+            height = height,
+            device = "pdf"
+          )
+        }
+      ))
+    } else {
+      ggsave(
+        filename = pdf_path,
+        plot = plot,
+        width = width,
+        height = height,
+        device = "pdf"
+      )
+    }
+  } else {
+    # No ragg: prefer cairo if system supports it; suppress cairo warning and fall back to base pdf on error
+    if (capabilities("cairo")) {
+      suppressWarnings(tryCatch(
+        ggsave(
+          filename = pdf_path,
+          plot = plot,
+          width = width,
+          height = height,
+          device = cairo_pdf
+        ),
+        error = function(e) {
+          warning("cairo PDF failed (", conditionMessage(e), ") — falling back to base PDF device")
+          ggsave(
+            filename = pdf_path,
+            plot = plot,
+            width = width,
+            height = height,
+            device = "pdf"
+          )
+        }
+      ))
+    } else {
+      ggsave(
+        filename = pdf_path,
+        plot = plot,
+        width = width,
+        height = height,
+        device = "pdf"
+      )
+    }
+  }
 
   message("Saved: ", filename, " (.png + .pdf)")
 }
@@ -81,6 +159,12 @@ save_plot <- function(plot, filename, width = 10, height = 6, dpi = 300) {
 save_table <- function(df, filename) {
   tables_dir <- here::here("00_basic_corpus_statistics", "output", "tables")
   dir.create(tables_dir, recursive = TRUE, showWarnings = FALSE)
+
+  # Convert integer64 columns (from DB drivers) to numeric to avoid
+  # automatic coercion warnings when writing with writexl/readr.
+  if (any(vapply(df, function(col) inherits(col, "integer64"), logical(1)))) {
+    df <- df |> dplyr::mutate(dplyr::across(dplyr::where(~ inherits(.x, "integer64")), as.numeric))
+  }
 
   readr::write_csv(df, file.path(tables_dir, paste0(filename, ".csv")))
   writexl::write_xlsx(df, file.path(tables_dir, paste0(filename, ".xlsx")))
