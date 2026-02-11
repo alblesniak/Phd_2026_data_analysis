@@ -152,7 +152,7 @@ metrics_comparison <- bind_rows(
 
 message("\n--- POROWNANIE METRYK (na uzytkownikach z ground truth) ---")
 print(metrics_comparison |> select(model, n_ground_truth, n_predicted, coverage, accuracy))
-print(metrics_comparison |> select(model, precision_M, recall_M, f1_M, precision_K, recall_K, f1_K))
+print(metrics_comparison |> select(model, precision_m, recall_m, f1_m, precision_k, recall_k, f1_k))
 
 # =============================================================================
 # 4) Analysis of Coverage Gain
