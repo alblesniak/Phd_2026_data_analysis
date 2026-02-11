@@ -12,6 +12,7 @@
 #   E) Future Cmp: "będę robił" (będę + praet)          <-- NEW
 #   F) Conditional: "zrobiłbym" (praet + by + aglt)     <-- NEW
 #   G) Verba Sentiendi: "czuję się zmęczona"            <-- NEW
+#   Z) Regex fallback (bylam/bylem bez polskich znakow)  <-- NEW
 #
 # Output: output/data/user_gender_features.csv
 # =============================================================================
@@ -209,6 +210,47 @@ feature_g <- dbGetQuery(con, query_g) |> as_tibble() |> mutate(user_id = as_nume
 message("  Cecha G: ", nrow(feature_g), " uzytkownikow")
 
 # =============================================================================
+# Feature Z: Regex fallback for missing Polish diacritics - NEW
+# =============================================================================
+# Łapie zapisy bez diakrytyków, np. "bylem", "bylam", "zrobilbym", "zrobilabym"
+# Bezpiecznik: blacklista rzeczowników kończących się tak samo (fałszywe trafienia)
+message("Pobieranie cechy Z: Regex fallback (bez polskich znakow)...")
+
+query_z <- "
+  WITH fallback_hits AS (
+    SELECT
+      p.user_id,
+      LOWER(t.orth) AS orth_lower
+    FROM post_lpmn_tokens t
+    JOIN posts p ON p.id = t.post_id
+    WHERE p.user_id IS NOT NULL
+      AND (
+        LOWER(t.orth) ~ '^[[:alpha:]]+lem$'
+        OR LOWER(t.orth) ~ '^[[:alpha:]]+lbym$'
+        OR LOWER(t.orth) ~ '^[[:alpha:]]+lam$'
+        OR LOWER(t.orth) ~ '^[[:alpha:]]+labym$'
+      )
+      AND LOWER(t.orth) !~ '^(problem|islam|moslem|jeruzalem|golem|szlem|elem)$'
+      AND LOWER(t.orth) !~ '^(plam|lam|salam|reklam|tam)$'
+  )
+  SELECT
+    user_id,
+    SUM(CASE
+          WHEN orth_lower ~ '^[[:alpha:]]+lem$' OR orth_lower ~ '^[[:alpha:]]+lbym$' THEN 1
+          ELSE 0
+        END) AS feat_z_M,
+    SUM(CASE
+          WHEN orth_lower ~ '^[[:alpha:]]+lam$' OR orth_lower ~ '^[[:alpha:]]+labym$' THEN 1
+          ELSE 0
+        END) AS feat_z_K
+  FROM fallback_hits
+  GROUP BY user_id
+"
+
+feature_z <- dbGetQuery(con, query_z) |> as_tibble() |> mutate(user_id = as_numeric_id(user_id))
+message("  Cecha Z: ", nrow(feature_z), " uzytkownikow")
+
+# =============================================================================
 # Merge all features into a single table
 # =============================================================================
 
@@ -225,6 +267,7 @@ features_combined <- all_users |>
   left_join(feature_e, by = "user_id") |>
   left_join(feature_f, by = "user_id") |>
   left_join(feature_g, by = "user_id") |>
+  left_join(feature_z, by = "user_id") |>
   # FIX: Convert integer64 columns to numeric BEFORE coalescing
   # This prevents "Can't combine integer64 and double" error
   mutate(across(starts_with("feat_"), as.numeric)) |>

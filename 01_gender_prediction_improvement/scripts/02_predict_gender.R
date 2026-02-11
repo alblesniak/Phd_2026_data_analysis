@@ -11,6 +11,7 @@
 #   - Feature E (future): Weight 1.0 (Strong marker: będę robił/robiła)
 #   - Feature F (conditional): Weight 1.0 (Strong marker: zrobiłbym/zrobiłabym)
 #   - Feature G (verba sentiendi): Weight 0.8 (Czuję się + adj/ppas)
+#   - Feature Z (regex fallback): Weight 0.5 (fallback for missing diacritics)
 #
 # Output: output/data/new_gender_predictions.csv
 # =============================================================================
@@ -34,6 +35,7 @@ WEIGHT_D <- 1.0   # Winien forms (powinienem)
 WEIGHT_E <- 1.0   # Future compound (będę robił)
 WEIGHT_F <- 1.0   # Conditional (zrobiłbym)
 WEIGHT_G <- 0.8   # Verba sentiendi (czuję się zmęczona)
+WEIGHT_Z <- 0.5   # Regex fallback (bylem/bylam, zrobilbym/zrobilabym)
 
 # Thresholds
 CONFIDENCE_THRESHOLD <- 0.60  # Require > 60% of weighted evidence for one side
@@ -64,7 +66,8 @@ predictions <- features |>
               (feat_d_m * WEIGHT_D) +
               (feat_e_m * WEIGHT_E) +
               (feat_f_m * WEIGHT_F) +
-              (feat_g_m * WEIGHT_G),
+              (feat_g_m * WEIGHT_G) +
+              (feat_z_m * WEIGHT_Z),
 
     score_k = (feat_a_k * WEIGHT_A) +
               (feat_b_k * WEIGHT_B) +
@@ -72,7 +75,8 @@ predictions <- features |>
               (feat_d_k * WEIGHT_D) +
               (feat_e_k * WEIGHT_E) +
               (feat_f_k * WEIGHT_F) +
-              (feat_g_k * WEIGHT_G),
+              (feat_g_k * WEIGHT_G) +
+              (feat_z_k * WEIGHT_Z),
 
     score_total = score_m + score_k,
 
@@ -125,7 +129,8 @@ contribution <- predictions |>
     has_feat_d = sum(feat_d_m + feat_d_k > 0),
     has_feat_e = sum(feat_e_m + feat_e_k > 0),
     has_feat_f = sum(feat_f_m + feat_f_k > 0),
-    has_feat_g = sum(feat_g_m + feat_g_k > 0)
+    has_feat_g = sum(feat_g_m + feat_g_k > 0),
+    has_feat_z = sum(feat_z_m + feat_z_k > 0)
   )
 
 message("\n--- Wklad poszczegolnych cech (wsrod predykowanych) ---")
@@ -136,6 +141,7 @@ message("  Ma ceche D (winien):           ", contribution$has_feat_d, " / ", con
 message("  Ma ceche E (future):           ", contribution$has_feat_e, " / ", contribution$n_predicted)
 message("  Ma ceche F (conditional):      ", contribution$has_feat_f, " / ", contribution$n_predicted)
 message("  Ma ceche G (czuc sie+adj):     ", contribution$has_feat_g, " / ", contribution$n_predicted)
+message("  Ma ceche Z (regex fallback):   ", contribution$has_feat_z, " / ", contribution$n_predicted)
 
 # =============================================================================
 # Save output
