@@ -1,0 +1,68 @@
+# ===== R / RStudio =====
+# R history and workspace
+.Rhistory
+.RData
+.RDataTmp
+# RStudio project user settings
+.Rproj.user/
+# R environ & credentials
+.Renviron
+.Renv
+# Packaging / build artifacts
+.Rbuildignore
+
+# ===== Outputs and caches =====
+# Common folders for generated outputs (plots, tables, etc.)
+**/output/
+# knitr/cache and pandoc/latex intermediate files
+*_cache/
+*.utf8.md
+*.knit.md
+*.pdf
+*.html
+*.aux
+*.log
+*.out
+
+# ===== R data files (optional - keep if you track them intentionally) =====
+# Add patterns here if you want to ignore large binary data files like .rds
+# Example: *.rds
+
+# ===== macOS =====
+.DS_Store
+.AppleDouble
+._*
+
+# ===== Editors / IDEs =====
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Vim swap files
+*.swp
+
+# Emacs
+*~
+
+# Jupyter
+.ipynb_checkpoints/
+
+# ===== Temporary / system files =====
+Thumbs.db
+desktop.ini
+
+# ===== Logs =====
+*.log
+
+# ===== Misc =====
+# Lock files or runtime files
+*.lock
+
+# ===== Sensitive / project-specific =====
+# Environment variables and secrets
+.env
+
+# Local archive or backup folder
+archive/
+
