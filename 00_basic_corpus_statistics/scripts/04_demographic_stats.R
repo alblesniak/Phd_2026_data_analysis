@@ -74,7 +74,7 @@ p_zipf <- ggplot(user_ranked, aes(x = rank, y = n_posts)) +
     caption = "Zrodlo: baza danych forums_scraper"
   ) +
   theme_academic() +
-  annotation_logticks(sides = "bl", size = 0.2, color = "grey60")
+  annotation_logticks(sides = "bl", linewidth = 0.2, color = "grey60")
 
 save_plot(p_zipf, "06_zipf_aktywnosc", width = 10, height = 7)
 
