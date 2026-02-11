@@ -33,7 +33,7 @@ WEIGHT_C <- 0.8   # Passive voice
 WEIGHT_D <- 1.0   # Winien forms (powinienem)
 WEIGHT_E <- 1.0   # Future compound (będę robił)
 WEIGHT_F <- 1.0   # Conditional (zrobiłbym)
-WEIGHT_G <- 0.8   # Verba sentiendi (czuję się zmęczona)
+WEIGHT_G <- 0.8   # Verba sentiendi (czuję się)
 
 # Thresholds
 CONFIDENCE_THRESHOLD <- 0.60  # Require > 60% of weighted evidence for one side

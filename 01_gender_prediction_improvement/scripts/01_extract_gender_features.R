@@ -8,10 +8,10 @@
 #   A) Past Tense 1sg: "zrobiłem" (praet:sg + aglt:sg:pri)
 #   B) Predicate: "jestem zadowolony" (być + adj)
 #   C) Passive Voice: "zostałem zapytany" (zostać + ppas)
-#   D) Winien: "powinienem" (winien + aglt)             <-- NEW
-#   E) Future Cmp: "będę robił" (będę + praet)          <-- NEW
-#   F) Conditional: "zrobiłbym" (praet + by + aglt)     <-- NEW
-#   G) Verba Sentiendi: "czuję się zmęczona"            <-- NEW
+#   D) Winien: "powinienem" (winien + aglt)
+#   E) Future Cmp: "będę robił" (będę + praet)
+#   F) Conditional: "zrobiłbym" (praet + by + aglt)
+#   G) Verba Sentiendi: "czuję się zmęczona"
 #
 # Output: output/data/user_gender_features.csv
 # =============================================================================
@@ -25,7 +25,7 @@ library(bit64)
 # --- Database connection ---
 source(here::here("00_basic_corpus_statistics", "scripts", "db_connection.R"))
 
-message("\n=== EKSTRAKCJA CECH PLCI GRAMATYCZNEJ (V2 - FULL) ===")
+message("\n=== EKSTRAKCJA CECH PLCI GRAMATYCZNEJ (V2 - STABLE A-G) ===")
 message("Start: ", Sys.time())
 
 # Helper to safeguard integer64 -> numeric conversion
@@ -76,7 +76,7 @@ feature_b <- dbGetQuery(con, query_b) |> as_tibble() |> mutate(user_id = as_nume
 message("  Cecha B: ", nrow(feature_b), " uzytkownikow")
 
 # =============================================================================
-# Feature C: Passive Voice (zostałem + ppas)
+# Feature C: Passive Voice (zostałem + ppas) - REVERTED TO ORIGINAL
 # =============================================================================
 message("Pobieranie cechy C: Strona bierna (zostalem zapytany)...")
 query_c <- "
@@ -98,7 +98,7 @@ feature_c <- dbGetQuery(con, query_c) |> as_tibble() |> mutate(user_id = as_nume
 message("  Cecha C: ", nrow(feature_c), " uzytkownikow")
 
 # =============================================================================
-# Feature D: Winien (Powinienem) - NEW
+# Feature D: Winien (Powinienem)
 # =============================================================================
 message("Pobieranie cechy D: Winien (powinienem)...")
 query_d <- "
@@ -120,9 +120,8 @@ feature_d <- dbGetQuery(con, query_d) |> as_tibble() |> mutate(user_id = as_nume
 message("  Cecha D: ", nrow(feature_d), " uzytkownikow")
 
 # =============================================================================
-# Feature E: Future Compound (Będę robił) - NEW
+# Feature E: Future Compound (Będę robił)
 # =============================================================================
-# Note: allowing window of 1-3 to catch 'będę to robił'
 message("Pobieranie cechy E: Czas przyszly zlozony (bede robil)...")
 query_e <- "
   WITH target_pairs AS (
@@ -143,9 +142,8 @@ feature_e <- dbGetQuery(con, query_e) |> as_tibble() |> mutate(user_id = as_nume
 message("  Cecha E: ", nrow(feature_e), " uzytkownikow")
 
 # =============================================================================
-# Feature F: Conditional (Zrobiłbym) - NEW
+# Feature F: Conditional (Zrobiłbym)
 # =============================================================================
-# Pattern: praet (t1) + qub (t2) + aglt (t3). e.g., chciał (t1) + by (t2) + m (t3)
 message("Pobieranie cechy F: Tryb przypuszczajacy (zrobilbym)...")
 query_f <- "
   WITH target_pairs AS (
@@ -168,9 +166,8 @@ feature_f <- dbGetQuery(con, query_f) |> as_tibble() |> mutate(user_id = as_nume
 message("  Cecha F: ", nrow(feature_f), " uzytkownikow")
 
 # =============================================================================
-# Feature G: Verba Sentiendi (Czuję się + Adj) - NEW
+# Feature G: Verba Sentiendi (Czuję się + Adj)
 # =============================================================================
-# Łapie: "Czuję się [bardzo] zmęczona"
 message("Pobieranie cechy G: Czuć się + przymiotnik...")
 
 query_g <- "
@@ -178,20 +175,20 @@ query_g <- "
     SELECT p.user_id, t3.ctag AS adj_tag
     FROM post_lpmn_tokens t1
     -- Szukamy 'się' w oknie -1 do +1 względem czasownika 'czuję'
-    JOIN post_lpmn_tokens t2 ON t2.post_id = t1.post_id
+    JOIN post_lpmn_tokens t2 ON t2.post_id = t1.post_id 
       AND t2.token_order BETWEEN t1.token_order - 1 AND t1.token_order + 1
       AND t2.token_order != t1.token_order
     -- Szukamy przymiotnika w oknie +1 do +5
-    JOIN post_lpmn_tokens t3 ON t3.post_id = t1.post_id
+    JOIN post_lpmn_tokens t3 ON t3.post_id = t1.post_id 
       AND t3.token_order BETWEEN t1.token_order + 1 AND t1.token_order + 5
     JOIN posts p ON p.id = t1.post_id
-    WHERE
+    WHERE 
       -- 1. Czasownik 'czuć' w 1 os. lp. czasu teraźniejszego (czuję)
       (t1.lemma = 'czuć' AND t1.ctag LIKE 'fin:sg:pri:%')
-
+      
       -- 2. Partykuła 'się'
       AND t2.lemma = 'się'
-
+      
       -- 3. Przymiotnik lub Imiesłów w mianowniku (zmęczony/zmęczona)
       AND (
            (t3.ctag LIKE 'adj:sg:nom:m1:%' OR t3.ctag LIKE 'adj:sg:nom:f:%')
