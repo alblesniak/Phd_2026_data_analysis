@@ -11,6 +11,7 @@
 #   D) Winien: "powinienem" (winien + aglt)             <-- NEW
 #   E) Future Cmp: "będę robił" (będę + praet)          <-- NEW
 #   F) Conditional: "zrobiłbym" (praet + by + aglt)     <-- NEW
+#   G) Verba Sentiendi: "czuję się zmęczona"            <-- NEW
 #
 # Output: output/data/user_gender_features.csv
 # =============================================================================
@@ -167,6 +168,47 @@ feature_f <- dbGetQuery(con, query_f) |> as_tibble() |> mutate(user_id = as_nume
 message("  Cecha F: ", nrow(feature_f), " uzytkownikow")
 
 # =============================================================================
+# Feature G: Verba Sentiendi (Czuję się + Adj) - NEW
+# =============================================================================
+# Łapie: "Czuję się [bardzo] zmęczona"
+message("Pobieranie cechy G: Czuć się + przymiotnik...")
+
+query_g <- "
+  WITH target_pairs AS (
+    SELECT p.user_id, t3.ctag AS adj_tag
+    FROM post_lpmn_tokens t1
+    -- Szukamy 'się' w oknie -1 do +1 względem czasownika 'czuję'
+    JOIN post_lpmn_tokens t2 ON t2.post_id = t1.post_id
+      AND t2.token_order BETWEEN t1.token_order - 1 AND t1.token_order + 1
+      AND t2.token_order != t1.token_order
+    -- Szukamy przymiotnika w oknie +1 do +5
+    JOIN post_lpmn_tokens t3 ON t3.post_id = t1.post_id
+      AND t3.token_order BETWEEN t1.token_order + 1 AND t1.token_order + 5
+    JOIN posts p ON p.id = t1.post_id
+    WHERE
+      -- 1. Czasownik 'czuć' w 1 os. lp. czasu teraźniejszego (czuję)
+      (t1.lemma = 'czuć' AND t1.ctag LIKE 'fin:sg:pri:%')
+
+      -- 2. Partykuła 'się'
+      AND t2.lemma = 'się'
+
+      -- 3. Przymiotnik lub Imiesłów w mianowniku (zmęczony/zmęczona)
+      AND (
+           (t3.ctag LIKE 'adj:sg:nom:m1:%' OR t3.ctag LIKE 'adj:sg:nom:f:%')
+        OR (t3.ctag LIKE 'ppas:sg:nom:m1:%' OR t3.ctag LIKE 'ppas:sg:nom:f:%')
+      )
+      AND p.user_id IS NOT NULL
+  )
+  SELECT user_id,
+    SUM(CASE WHEN adj_tag LIKE '%:m1:%' THEN 1 ELSE 0 END) AS feat_g_M,
+    SUM(CASE WHEN adj_tag LIKE '%:f:%' THEN 1 ELSE 0 END) AS feat_g_K
+  FROM target_pairs GROUP BY user_id
+"
+
+feature_g <- dbGetQuery(con, query_g) |> as_tibble() |> mutate(user_id = as_numeric_id(user_id))
+message("  Cecha G: ", nrow(feature_g), " uzytkownikow")
+
+# =============================================================================
 # Merge all features into a single table
 # =============================================================================
 
@@ -182,6 +224,7 @@ features_combined <- all_users |>
   left_join(feature_d, by = "user_id") |>
   left_join(feature_e, by = "user_id") |>
   left_join(feature_f, by = "user_id") |>
+  left_join(feature_g, by = "user_id") |>
   # FIX: Convert integer64 columns to numeric BEFORE coalescing
   # This prevents "Can't combine integer64 and double" error
   mutate(across(starts_with("feat_"), as.numeric)) |>
