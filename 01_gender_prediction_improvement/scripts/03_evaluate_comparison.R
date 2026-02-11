@@ -1,13 +1,8 @@
 # =============================================================================
 # 03_evaluate_comparison.R - Evaluate and compare gender prediction models
 # =============================================================================
-# Compares:
-#   1) Baseline (Python script) — stored in users.pred_gender
-#   2) New R algorithm — from 02_predict_gender.R output
-# Against Ground Truth — users.gender (where 'M' or 'K')
-#
-# Metrics: Accuracy, Precision, Recall, F1, Coverage
-# Outputs: comparison tables, confusion matrix plots, coverage gain analysis
+# FIX: Detaches 'bit64' package after data loading to prevent masking of
+# comparison operators (==, %in%) which caused 0% accuracy in text comparisons.
 # =============================================================================
 
 library(dplyr)
@@ -17,14 +12,15 @@ library(ggplot2)
 library(scales)
 library(here)
 library(DBI)
+# Do not load bit64 explicitly here, it's loaded by dependency but we must manage it
 
-# --- Reuse shared helpers (theme, save_plot, save_table, fmt_number) ---
+# --- Reuse shared helpers ---
 source(here::here("00_basic_corpus_statistics", "scripts", "00_setup_theme.R"))
 
 # --- Database connection ---
 source(here::here("00_basic_corpus_statistics", "scripts", "db_connection.R"))
 
-message("\n=== EWALUACJA I POROWNANIE MODELI PREDYKCJI PLCI ===")
+message("\n=== EWALUACJA I POROWNANIE MODELI PREDYKCJI PLCI === ")
 message("Start: ", Sys.time())
 
 # =============================================================================
@@ -38,413 +34,261 @@ users_db_raw <- dbGetQuery(con, "
     gender AS ground_truth,
     pred_gender AS baseline_pred
   FROM users
-") |> as_tibble()
-
-# FIX: Convert integer64 to numeric to match CSV input type later
-users_db <- users_db_raw |>
-  mutate(user_id = as.numeric(user_id))
+")
 
 dbDisconnect(con)
-message("Polaczenie z baza zamkniete.")
+message("Dane z bazy pobrane (", nrow(users_db_raw), " wierszy).")
 
-# New predictions
-new_pred_path <- here::here("01_gender_prediction_improvement", "output",
-                             "data", "new_gender_predictions.csv")
-if (!file.exists(new_pred_path)) {
-  stop("Brak pliku predykcji. Uruchom najpierw 02_predict_gender.R")
+# FIX: Convert integer64 to numeric immediately
+users_db <- users_db_raw |>
+  as_tibble() |>
+  mutate(user_id = as.numeric(user_id))
+
+# CRITICAL FIX: Detach bit64/bit if loaded to restore base '==' and '%in%' operators
+if ("package:bit64" %in% search()) {
+  message("Detaching bit64 to restore base comparison operators...")
+  detach("package:bit64", unload = TRUE)
+}
+if ("package:bit" %in% search()) {
+  detach("package:bit", unload = TRUE)
 }
 
-new_predictions <- read_csv(new_pred_path, show_col_types = FALSE) |>
-  select(user_id, new_pred_gender)
+# Load New predictions
+new_preds_path <- here::here("01_gender_prediction_improvement", "output", "data", "new_gender_predictions.csv")
+
+if (!file.exists(new_preds_path)) {
+  stop("Brak pliku z nowymi predykcjami: ", new_preds_path)
+}
+
+new_preds <- read_csv(new_preds_path, show_col_types = FALSE) |>
+  select(user_id, new_pred_gender, confidence, score_total)
+
+message("Nowe predykcje wczytane.")
 
 # =============================================================================
-# 2) Normalize labels and merge
+# 2) Merge and Clean
 # =============================================================================
 
-# Standardize ground truth: keep only known genders (M, K)
-# Standardize predictions to "male" / "female" / "unknown"
 eval_data <- users_db |>
-  left_join(new_predictions, by = "user_id") |>
+  left_join(new_preds, by = "user_id") |>
   mutate(
-    # Ground truth normalization
-    gt = case_when(
-      ground_truth == "M" ~ "male",
-      ground_truth == "K" ~ "female",
-      TRUE                ~ NA_character_   # no ground truth
-    ),
-    # Baseline normalization (from Python: "male"/"female"/"unknown"/NA)
-    bl = case_when(
-      baseline_pred %in% c("male", "M")      ~ "male",
-      baseline_pred %in% c("female", "K")     ~ "female",
-      TRUE                                    ~ "unknown"
-    ),
-    # New prediction (already standardized)
-    nw = coalesce(new_pred_gender, "unknown")
+    # Normalize gender labels
+    ground_truth  = trimws(toupper(ground_truth)),
+    baseline_pred = trimws(baseline_pred),
+    new_pred_gender = coalesce(new_pred_gender, "unknown")
+  ) |>
+  # Keep only valid Ground Truth for accuracy metrics (M or K)
+  mutate(
+    has_gt = ground_truth %in% c("M", "K")
   )
 
-n_with_gt <- sum(!is.na(eval_data$gt))
-message("Uzytkownikow z ground truth (gender = M lub K): ", n_with_gt)
-message("Lacznie uzytkownikow: ", nrow(eval_data))
+message("Polaczono dane. Liczba uzytkownikow z GT: ", sum(eval_data$has_gt))
+
+# DEBUG: Print sample to verify alignment
+message("\n--- DEBUG: Próbka danych (GT vs New) ---")
+print(eval_data |>
+        filter(has_gt, new_pred_gender != "unknown") |>
+        select(user_id, gt=ground_truth, new=new_pred_gender) |>
+        head(5))
 
 # =============================================================================
-# 3) Metric computation helper
+# 3) Calculate Metrics
 # =============================================================================
 
-compute_metrics <- function(truth, predicted, model_name) {
-  # Filter to users where we have ground truth AND the model made a prediction
-  df <- tibble(truth = truth, pred = predicted) |>
-    filter(!is.na(truth))
+calc_metrics <- function(df, pred_col, gt_col = "ground_truth") {
+  # Filter only where GT is known (M/K)
+  df_filtered <- df |> filter(.data[[gt_col]] %in% c("M", "K"))
+  total_gt <- nrow(df_filtered)
 
-  n_gt       <- nrow(df)
-  n_pred     <- sum(df$pred != "unknown")
-  coverage   <- n_pred / n_gt
+  # Confusion Matrix elements
+  # Note: using base operators now that bit64 is detached
+  tp_m <- sum(df_filtered[[gt_col]] == "M" & df_filtered[[pred_col]] == "M", na.rm = TRUE)
+  tp_k <- sum(df_filtered[[gt_col]] == "K" & df_filtered[[pred_col]] == "K", na.rm = TRUE)
 
-  # Among predicted users, compute binary metrics per class
-  df_pred <- df |> filter(pred != "unknown")
+  # FP/FN needed for Precision/Recall
+  fp_m <- sum(df_filtered[[gt_col]] == "K" & df_filtered[[pred_col]] == "M", na.rm = TRUE)
+  fn_m <- sum(df_filtered[[gt_col]] == "M" & df_filtered[[pred_col]] != "M", na.rm = TRUE)
 
-  if (nrow(df_pred) == 0) {
-    return(tibble(
-      model     = model_name,
-      coverage  = 0,
-      accuracy  = NA_real_,
-      precision_M = NA_real_, recall_M = NA_real_, f1_M = NA_real_,
-      precision_K = NA_real_, recall_K = NA_real_, f1_K = NA_real_,
-      macro_precision = NA_real_, macro_recall = NA_real_, macro_f1 = NA_real_
-    ))
-  }
+  fp_k <- sum(df_filtered[[gt_col]] == "M" & df_filtered[[pred_col]] == "K", na.rm = TRUE)
+  fn_k <- sum(df_filtered[[gt_col]] == "K" & df_filtered[[pred_col]] != "K", na.rm = TRUE)
 
-  accuracy <- mean(df_pred$truth == df_pred$pred)
+  # Only count users that the model actually attempted to classify
+  classified <- df_filtered |> filter(.data[[pred_col]] %in% c("M", "K"))
+  n_predicted <- nrow(classified)
+
+  accuracy <- if(n_predicted > 0) (tp_m + tp_k) / n_predicted else 0
+  coverage <- if(total_gt > 0) n_predicted / total_gt else 0
 
   # Per-class metrics
-  calc_class <- function(class_label) {
-    tp <- sum(df_pred$truth == class_label & df_pred$pred == class_label)
-    fp <- sum(df_pred$truth != class_label & df_pred$pred == class_label)
-    fn <- sum(df_pred$truth == class_label & df_pred$pred != class_label)
-    precision <- if ((tp + fp) > 0) tp / (tp + fp) else NA_real_
-    recall    <- if ((tp + fn) > 0) tp / (tp + fn) else NA_real_
-    f1        <- if (!is.na(precision) && !is.na(recall) && (precision + recall) > 0)
-                   2 * precision * recall / (precision + recall) else NA_real_
-    list(precision = precision, recall = recall, f1 = f1)
-  }
+  prec_m <- if((tp_m + fp_m) > 0) tp_m / (tp_m + fp_m) else 0
+  rec_m  <- if((tp_m + fn_m) > 0) tp_m / (tp_m + fn_m) else 0
+  f1_m   <- if((prec_m + rec_m) > 0) 2 * prec_m * rec_m / (prec_m + rec_m) else 0
 
-  m_M <- calc_class("male")
-  m_K <- calc_class("female")
+  prec_k <- if((tp_k + fp_k) > 0) tp_k / (tp_k + fp_k) else 0
+  rec_k  <- if((tp_k + fn_k) > 0) tp_k / (tp_k + fn_k) else 0
+  f1_k   <- if((prec_k + rec_k) > 0) 2 * prec_k * rec_k / (prec_k + rec_k) else 0
 
-  tibble(
-    model           = model_name,
-    n_ground_truth  = n_gt,
-    n_predicted     = n_pred,
-    coverage        = round(coverage * 100, 2),
-    accuracy        = round(accuracy * 100, 2),
-    precision_M     = round(m_M$precision * 100, 2),
-    recall_M        = round(m_M$recall * 100, 2),
-    f1_M            = round(m_M$f1 * 100, 2),
-    precision_K     = round(m_K$precision * 100, 2),
-    recall_K        = round(m_K$recall * 100, 2),
-    f1_K            = round(m_K$f1 * 100, 2),
-    macro_precision = round(mean(c(m_M$precision, m_K$precision), na.rm = TRUE) * 100, 2),
-    macro_recall    = round(mean(c(m_M$recall, m_K$recall), na.rm = TRUE) * 100, 2),
-    macro_f1        = round(mean(c(m_M$f1, m_K$f1), na.rm = TRUE) * 100, 2)
+  list(
+    n_ground_truth = total_gt,
+    n_predicted = n_predicted,
+    coverage = coverage * 100,
+    accuracy = accuracy * 100,
+    precision_m = prec_m * 100, recall_m = rec_m * 100, f1_m = f1_m * 100,
+    precision_k = prec_k * 100, recall_k = rec_k * 100, f1_k = f1_k * 100,
+    macro_precision = (prec_m + prec_k)/2 * 100,
+    macro_recall = (rec_m + rec_k)/2 * 100,
+    macro_f1 = (f1_m + f1_k)/2 * 100
   )
 }
 
-# =============================================================================
-# 4) Compute metrics for both models
-# =============================================================================
+metrics_bl <- calc_metrics(eval_data, "baseline_pred")
+metrics_nw <- calc_metrics(eval_data, "new_pred_gender")
 
-metrics_baseline <- compute_metrics(eval_data$gt, eval_data$bl, "Baseline (Python)")
-metrics_new      <- compute_metrics(eval_data$gt, eval_data$nw, "New R Algorithm")
-
-metrics_comparison <- bind_rows(metrics_baseline, metrics_new)
+# Combine results
+metrics_comparison <- bind_rows(
+  bind_cols(model = "Baseline (Python)", as_tibble(metrics_bl)),
+  bind_cols(model = "New R Algorithm", as_tibble(metrics_nw))
+)
 
 message("\n--- POROWNANIE METRYK (na uzytkownikach z ground truth) ---")
-metrics_comparison |>
-  mutate(across(where(is.numeric), ~ ifelse(is.na(.x), "N/A", paste0(.x)))) |>
-  as.data.frame() |>
-  print()
+print(metrics_comparison |> select(model, n_ground_truth, n_predicted, coverage, accuracy))
+print(metrics_comparison |> select(model, precision_M, recall_M, f1_M, precision_K, recall_K, f1_K))
 
 # =============================================================================
-# 5) Coverage gain analysis
+# 4) Analysis of Coverage Gain
 # =============================================================================
 
-coverage_analysis <- eval_data |>
-  mutate(
-    bl_has_pred = bl != "unknown",
-    nw_has_pred = nw != "unknown"
-  ) |>
+# Users where Baseline was unknown, but New is M/K
+gain_users <- eval_data |>
+  filter(baseline_pred == "unknown", new_pred_gender %in% c("M", "K"))
+
+# Users where Baseline was known, but New is unknown (loss)
+loss_users <- eval_data |>
+  filter(baseline_pred %in% c("M", "K"), new_pred_gender == "unknown")
+
+# Agreement analysis
+both_predicted <- eval_data |>
+  filter(baseline_pred %in% c("M", "K"), new_pred_gender %in% c("M", "K"))
+
+agreement <- both_predicted |>
   summarise(
-    total_users         = n(),
-    baseline_predicted  = sum(bl_has_pred),
-    new_predicted       = sum(nw_has_pred),
-    coverage_gain       = sum(!bl_has_pred & nw_has_pred),
-    coverage_lost       = sum(bl_has_pred & !nw_has_pred),
-    both_predicted      = sum(bl_has_pred & nw_has_pred),
-    agreement           = sum(bl_has_pred & nw_has_pred & bl == nw),
-    disagreement        = sum(bl_has_pred & nw_has_pred & bl != nw)
+    n = n(),
+    agree = sum(baseline_pred == new_pred_gender),
+    disagree = sum(baseline_pred != new_pred_gender)
   )
+
+coverage_analysis <- tibble(
+  Metric = c("Lacznie uzytkownikow",
+             "Baseline predykowane", "Nowy algorytm predykowane",
+             "Przyrost pokrycia (gain)", "Utrata pokrycia",
+             "Oba modele predykuja", "Zgodnosc", "Niezgodnosc"),
+  Value = c(nrow(eval_data),
+            sum(eval_data$baseline_pred %in% c("M", "K")),
+            sum(eval_data$new_pred_gender %in% c("M", "K")),
+            nrow(gain_users),
+            nrow(loss_users),
+            agreement$n, agreement$agree, agreement$disagree)
+)
 
 message("\n--- ANALIZA POKRYCIA ---")
-message("Lacznie uzytkownikow:               ", coverage_analysis$total_users)
-message("Baseline predykowane:                ", coverage_analysis$baseline_predicted)
-message("Nowy algorytm predykowane:           ", coverage_analysis$new_predicted)
-message("Przyrost pokrycia (gain):            ", coverage_analysis$coverage_gain,
-        " uzytkownikow (baseline=unknown, nowy=znany)")
-message("Utrata pokrycia:                     ", coverage_analysis$coverage_lost,
-        " uzytkownikow (baseline=znany, nowy=unknown)")
-message("Oba modele predykuja:                ", coverage_analysis$both_predicted)
-message("  Zgodnosc:                          ", coverage_analysis$agreement)
-message("  Niezgodnosc:                       ", coverage_analysis$disagreement)
+print(coverage_analysis)
 
-# Coverage gain with ground truth check
-gain_users <- eval_data |>
-  filter(bl == "unknown", nw != "unknown")
-
-gain_with_gt <- gain_users |>
-  filter(!is.na(gt))
-
-if (nrow(gain_with_gt) > 0) {
-  gain_accuracy <- mean(gain_with_gt$gt == gain_with_gt$nw) * 100
-  message("\nPrzyrost pokrycia z ground truth: ", nrow(gain_with_gt), " uzytkownikow")
-  message("  Dokladnosc na tych uzytkownikach: ", round(gain_accuracy, 1), "%")
-}
-
-# =============================================================================
-# 6) Confusion matrix data (for users with ground truth)
-# =============================================================================
-
-# Function to build confusion matrix tibble
-build_confusion <- function(truth, predicted, model_name) {
-  tibble(truth = truth, pred = predicted) |>
-    filter(!is.na(truth), pred != "unknown") |>
-    count(truth, pred) |>
-    mutate(model = model_name)
-}
-
-cm_baseline <- build_confusion(eval_data$gt, eval_data$bl, "Baseline (Python)")
-cm_new      <- build_confusion(eval_data$gt, eval_data$nw, "Nowy algorytm R")
-
-cm_combined <- bind_rows(cm_baseline, cm_new) |>
-  mutate(
-    truth_label = case_match(truth, "male" ~ "Mezczyzna", "female" ~ "Kobieta"),
-    pred_label  = case_match(pred,  "male" ~ "Mezczyzna", "female" ~ "Kobieta")
+# Validation of GAIN on Ground Truth
+gain_validation <- gain_users |>
+  filter(has_gt) |>
+  summarise(
+    n_gain_with_gt = n(),
+    correct = sum(new_pred_gender == ground_truth),
+    accuracy = if(n() > 0) correct/n()*100 else 0
   )
 
-# =============================================================================
-# 7) Confusion matrix visualization
-# =============================================================================
+message("\nPrzyrost pokrycia z ground truth: ", gain_validation$n_gain_with_gt, " uzytkownikow")
+message("  Dokladnosc na tych uzytkownikach: ", round(gain_validation$accuracy, 1), "%")
 
-p_confusion <- ggplot(
-  cm_combined,
-  aes(x = pred_label, y = truth_label, fill = n)
-) +
-  geom_tile(color = "white", linewidth = 1.2) +
-  geom_text(aes(label = format(n, big.mark = " ")),
-            size = 5, fontface = "bold", color = "white") +
-  facet_wrap(~ model, ncol = 2) +
-  scale_fill_gradient(low = "#85C1E9", high = "#1A5276",
-                      labels = label_number(big.mark = " ")) +
-  labs(
-    title    = "Macierz pomylek: porownanie modeli predykcji plci",
-    subtitle = "Na podstawie uzytkownikow z deklarowana plcia (ground truth)",
-    x        = "Predykcja",
-    y        = "Rzeczywista plec (ground truth)",
-    fill     = "Liczba\nuzytkownikow",
-    caption  = "Zrodlo: users.gender vs predykcje"
-  ) +
-  theme_academic() +
-  theme(
-    panel.grid = element_blank(),
-    axis.line  = element_blank()
-  ) +
-  coord_equal()
-
-# Save using the shared helper (outputs to 01_... directory)
-plots_dir <- here::here("01_gender_prediction_improvement", "output", "plots")
-dir.create(plots_dir, recursive = TRUE, showWarnings = FALSE)
-
-ggsave(
-  filename = file.path(plots_dir, "01_confusion_matrix_comparison.png"),
-  plot     = p_confusion,
-  width    = 12,
-  height   = 6,
-  dpi      = 300,
-  bg       = "white"
-)
-ggsave(
-  filename = file.path(plots_dir, "01_confusion_matrix_comparison.pdf"),
-  plot     = p_confusion,
-  width    = 12,
-  height   = 6
-)
-message("Zapisano: 01_confusion_matrix_comparison (.png + .pdf)")
 
 # =============================================================================
-# 8) Coverage comparison bar chart
+# 5) Visualizations
 # =============================================================================
 
-coverage_bar_data <- tibble(
-  model = c("Baseline (Python)", "Nowy algorytm R"),
-  predicted   = c(coverage_analysis$baseline_predicted,
-                  coverage_analysis$new_predicted),
-  unpredicted = c(coverage_analysis$total_users - coverage_analysis$baseline_predicted,
-                  coverage_analysis$total_users - coverage_analysis$new_predicted)
-) |>
-  pivot_longer(cols = c(predicted, unpredicted),
-               names_to = "status", values_to = "n_users") |>
-  mutate(
-    status_label = case_match(status,
-      "predicted"   ~ "Predykcja dokonana",
-      "unpredicted" ~ "Brak predykcji"
-    )
-  )
+plot_dir <- here::here("01_gender_prediction_improvement", "output", "plots")
+dir.create(plot_dir, recursive = TRUE, showWarnings = FALSE)
 
-p_coverage <- ggplot(
-  coverage_bar_data,
-  aes(x = model, y = n_users, fill = status_label)
-) +
-  geom_col(width = 0.6) +
-  geom_text(
-    aes(label = format(n_users, big.mark = " ")),
-    position = position_stack(vjust = 0.5),
-    size     = 4,
-    fontface = "bold",
-    color    = "white"
-  ) +
-  scale_fill_manual(values = c(
-    "Predykcja dokonana" = "#27AE60",
-    "Brak predykcji"     = "#95A5A6"
-  )) +
-  scale_y_continuous(labels = label_number(big.mark = " ")) +
-  labs(
-    title    = "Pokrycie predykcji plci: porownanie modeli",
-    subtitle = paste0("Lacznie: ",
-                      format(coverage_analysis$total_users, big.mark = " "),
-                      " uzytkownikow"),
-    x        = "Model",
-    y        = "Liczba uzytkownikow",
-    fill     = "Status",
-    caption  = "Zrodlo: users.pred_gender vs nowy algorytm R"
-  ) +
+# A) Confusion Matrices Comparison
+cm_data_bl <- eval_data |> filter(has_gt, baseline_pred %in% c("M", "K")) |>
+  count(ground_truth, predicted = baseline_pred) |> mutate(model = "Baseline")
+cm_data_nw <- eval_data |> filter(has_gt, new_pred_gender %in% c("M", "K")) |>
+  count(ground_truth, predicted = new_pred_gender) |> mutate(model = "New R Algo")
+
+cm_combined <- bind_rows(cm_data_bl, cm_data_nw)
+
+p_cm <- ggplot(cm_combined, aes(x = predicted, y = ground_truth, fill = n)) +
+  geom_tile() +
+  geom_text(aes(label = fmt_number(n)), color = "white", fontface = "bold") +
+  facet_wrap(~model) +
+  scale_fill_gradient(low = "#3498DB", high = "#2C3E50") +
+  labs(title = "Macierz pomyłek (Confusion Matrix)",
+       subtitle = "Porownanie Baseline vs Nowy Algorytm",
+       x = "Predykcja", y = "Rzeczywista plec (Ground Truth)") +
   theme_academic()
 
-ggsave(
-  filename = file.path(plots_dir, "02_coverage_comparison.png"),
-  plot     = p_coverage,
-  width    = 9,
-  height   = 6,
-  dpi      = 300,
-  bg       = "white"
-)
-ggsave(
-  filename = file.path(plots_dir, "02_coverage_comparison.pdf"),
-  plot     = p_coverage,
-  width    = 9,
-  height   = 6
-)
-message("Zapisano: 02_coverage_comparison (.png + .pdf)")
+save_plot(p_cm, "01_confusion_matrix_comparison", width = 10, height = 5)
 
-# =============================================================================
-# 9) Metrics comparison bar chart
-# =============================================================================
-
-metrics_long <- metrics_comparison |>
-  select(model, accuracy, macro_precision, macro_recall, macro_f1, coverage) |>
-  pivot_longer(cols = -model, names_to = "metric", values_to = "value") |>
-  mutate(
-    value_plot = coalesce(value, 0),
-    metric_label = case_match(
-      metric,
-      "accuracy"        ~ "Dokladnosc",
-      "macro_precision"  ~ "Precyzja (macro)",
-      "macro_recall"     ~ "Czulosc (macro)",
-      "macro_f1"         ~ "F1 (macro)",
-      "coverage"         ~ "Pokrycie"
-    ),
-    metric_label = factor(metric_label,
-                          levels = c("Pokrycie", "Dokladnosc",
-                                     "Precyzja (macro)", "Czulosc (macro)",
-                                     "F1 (macro)"))
+# B) Coverage Venn-like Bar
+cov_data <- tibble(
+  Group = c("Baseline Only", "Intersection", "New Only", "Unknown"),
+  Count = c(
+    nrow(loss_users),
+    agreement$n,
+    nrow(gain_users),
+    nrow(eval_data) - nrow(loss_users) - agreement$n - nrow(gain_users)
   )
+) |>
+  mutate(Pct = Count / sum(Count))
 
-p_metrics <- ggplot(
-  metrics_long,
-  aes(x = metric_label, y = value_plot, fill = model)
-) +
-  geom_col(position = position_dodge(width = 0.7), width = 0.6) +
-  geom_text(
-    aes(label = ifelse(is.na(value), "N/A", paste0(round(value, 1), "%"))),
-    position = position_dodge(width = 0.7),
-    vjust    = -0.5,
-    size     = 3.5,
-    fontface = "bold"
-  ) +
-  scale_fill_manual(values = c(
-    "Baseline (Python)" = "#E74C3C",
-    "New R Algorithm"    = "#2980B9"
-  )) +
-  scale_y_continuous(
-    limits = c(0, 105),
-    labels = label_percent(scale = 1)
-  ) +
-  labs(
-    title    = "Porownanie metryk predykcji plci",
-    subtitle = "Ewaluacja na uzytkownikach z deklarowana plcia (ground truth)",
-    x        = "Metryka",
-    y        = "Wartosc (%)",
-    fill     = "Model",
-    caption  = "Zrodlo: users.gender jako ground truth"
-  ) +
+p_cov <- ggplot(cov_data, aes(x = "", y = Count, fill = reorder(Group, Count))) +
+  geom_col(width = 0.5) +
+  geom_text(aes(label = paste0(fmt_number(Count), "\n(", percent(Pct, 0.1), ")")),
+            position = position_stack(vjust = 0.5), size = 3) +
+  scale_fill_brewer(palette = "Pastel1") +
+  labs(title = "Analiza pokrycia bazy uzytkownikow",
+       fill = "Status") +
   theme_academic() +
-  theme(axis.text.x = element_text(angle = 15, hjust = 1))
+  theme(axis.title = element_blank(), axis.text = element_blank(), panel.grid = element_blank())
 
-ggsave(
-  filename = file.path(plots_dir, "03_metrics_comparison.png"),
-  plot     = p_metrics,
-  width    = 11,
-  height   = 6,
-  dpi      = 300,
-  bg       = "white"
-)
-ggsave(
-  filename = file.path(plots_dir, "03_metrics_comparison.pdf"),
-  plot     = p_metrics,
-  width    = 11,
-  height   = 6
-)
-message("Zapisano: 03_metrics_comparison (.png + .pdf)")
+save_plot(p_cov, "02_coverage_comparison", width = 8, height = 6)
+
+# C) Metrics Bar Chart
+metrics_long <- metrics_comparison |>
+  select(model, accuracy, coverage, macro_f1) |>
+  pivot_longer(cols = -model, names_to = "metric", values_to = "value")
+
+p_metrics <- ggplot(metrics_long, aes(x = metric, y = value, fill = model)) +
+  geom_col(position = "dodge") +
+  geom_text(aes(label = round(value, 1)), position = position_dodge(0.9), vjust = -0.5) +
+  scale_fill_manual(values = c("gray50", "#27AE60")) +
+  ylim(0, 105) +
+  labs(title = "Porownanie skutecznosci modeli",
+       y = "Wartosc (%)", x = "Metryka") +
+  theme_academic()
+
+save_plot(p_metrics, "03_metrics_comparison", width = 8, height = 5)
 
 # =============================================================================
-# 10) Save tables
+# 6) Save tables
 # =============================================================================
 
 tables_dir <- here::here("01_gender_prediction_improvement", "output", "tables")
 dir.create(tables_dir, recursive = TRUE, showWarnings = FALSE)
 
-# Metrics comparison
-write_csv(metrics_comparison,
-          file.path(tables_dir, "01_metrics_comparison.csv"))
-message("Zapisano: 01_metrics_comparison.csv")
+write_csv(metrics_comparison, file.path(tables_dir, "01_metrics_comparison.csv"))
+write_csv(coverage_analysis, file.path(tables_dir, "02_coverage_analysis.csv"))
 
-# Coverage analysis
-write_csv(coverage_analysis,
-          file.path(tables_dir, "02_coverage_analysis.csv"))
-message("Zapisano: 02_coverage_analysis.csv")
-
-# Disagreement details (where both models predicted but disagree)
 disagreements <- eval_data |>
-  filter(bl != "unknown", nw != "unknown", bl != nw) |>
-  select(user_id, ground_truth, gt, baseline = bl, new_algorithm = nw)
+  filter(baseline_pred != "unknown", new_pred_gender != "unknown", baseline_pred != new_pred_gender) |>
+  select(user_id, ground_truth, baseline = baseline_pred, new_algorithm = new_pred_gender)
 
-write_csv(disagreements,
-          file.path(tables_dir, "03_disagreements.csv"))
-message("Zapisano: 03_disagreements.csv (", nrow(disagreements), " niezgodnosci)")
+write_csv(disagreements, file.path(tables_dir, "03_disagreements.csv"))
+write_csv(gain_users |> select(user_id, ground_truth, new_pred_gender), file.path(tables_dir, "04_coverage_gain_users.csv"))
 
-# Coverage gain details
-gain_details <- gain_users |>
-  select(user_id, ground_truth, gt, new_prediction = nw)
-
-write_csv(gain_details,
-          file.path(tables_dir, "04_coverage_gain_users.csv"))
-message("Zapisano: 04_coverage_gain_users.csv (", nrow(gain_details), " uzytkownikow)")
-
-message("\n03_evaluate_comparison.R zakonczone: ", Sys.time())
+message("Zapisano tabele wynikowe.")
+message("03_evaluate_comparison.R zakonczone: ", Sys.time())

@@ -1,17 +1,15 @@
 # =============================================================================
 # 02_predict_gender.R - Weighted voting algorithm for gender prediction
 # =============================================================================
-# Loads feature counts from Step 1 and applies a weighted scoring system
-# to predict each user's grammatical gender.
+# Loads feature counts from Step 1 and applies a weighted scoring system.
 #
 # Weights rationale:
-#   - Feature A (past tense 1sg): Weight 1.0 — highest reliability,
-#     morphological agreement between praet + aglt is unambiguous.
-#   - Feature B (adjectival predicate): Weight 0.8 — slightly less reliable
-#     because the adj may refer to a subject other than the speaker, and
-#     POS tagging can introduce noise.
-#   - Feature C (passive voice with 'zostać'): Weight 0.8 — reliable when
-#     found, but rarer; same tagging-error caveat as Feature B.
+#   - Feature A (past tense 1sg): Weight 1.0 (Unambiguous)
+#   - Feature B (predicate): Weight 0.8 (POS tagging noise risk)
+#   - Feature C (passive): Weight 0.8 (POS tagging noise risk)
+#   - Feature D (winien): Weight 1.0 (Strong marker: powinienem/powinnam)
+#   - Feature E (future): Weight 1.0 (Strong marker: będę robił/robiła)
+#   - Feature F (conditional): Weight 1.0 (Strong marker: zrobiłbym/zrobiłabym)
 #
 # Output: output/data/new_gender_predictions.csv
 # =============================================================================
@@ -27,124 +25,111 @@ message("Start: ", Sys.time())
 # Configuration
 # =============================================================================
 
-# Feature weights (adjustable)
-WEIGHT_A <- 1.0   # Past tense verbs (praet + aglt) — most reliable
-WEIGHT_B <- 0.8   # Adjectival predicate (jestem + adj) — medium reliability
-WEIGHT_C <- 0.8   # Passive voice (zostać + ppas) — medium reliability
+# Feature weights
+WEIGHT_A <- 1.0   # Past tense verbs (praet + aglt)
+WEIGHT_B <- 0.8   # Adjectival predicate (jestem + adj)
+WEIGHT_C <- 0.8   # Passive voice
+WEIGHT_D <- 1.0   # Winien forms (powinienem)
+WEIGHT_E <- 1.0   # Future compound (będę robił)
+WEIGHT_F <- 1.0   # Conditional (zrobiłbym)
 
-# Confidence threshold: prediction is made only if the dominant gender
-# holds more than this fraction of the total weighted score.
-CONFIDENCE_THRESHOLD <- 0.60
-
-message("Wagi cech: A=", WEIGHT_A, ", B=", WEIGHT_B, ", C=", WEIGHT_C)
-message("Prog pewnosci: ", CONFIDENCE_THRESHOLD * 100, "%")
+# Thresholds
+CONFIDENCE_THRESHOLD <- 0.60  # Require > 60% of weighted evidence for one side
 
 # =============================================================================
-# Load features
+# 1) Load features
 # =============================================================================
 
-features_path <- here::here("01_gender_prediction_improvement", "output",
-                             "data", "user_gender_features.csv")
+features_path <- here::here("01_gender_prediction_improvement", "output", "data", "user_gender_features.csv")
 
 if (!file.exists(features_path)) {
-  stop("Brak pliku cech. Uruchom najpierw 01_extract_gender_features.R")
+  stop("Brak pliku cech: ", features_path, "\nUruchom najpierw 01_extract_gender_features.R")
 }
 
 features <- read_csv(features_path, show_col_types = FALSE)
 message("Wczytano cechy dla ", nrow(features), " uzytkownikow")
 
 # =============================================================================
-# Weighted scoring
+# 2) Calculate Scores
 # =============================================================================
 
 predictions <- features |>
   mutate(
-    # Weighted masculine score
-    score_m = feat_a_M * WEIGHT_A +
-              feat_b_M * WEIGHT_B +
-              feat_c_M * WEIGHT_C,
+    # Weighted sums (using lowercase column names from Postgres)
+    score_m = (feat_a_m * WEIGHT_A) +
+              (feat_b_m * WEIGHT_B) +
+              (feat_c_m * WEIGHT_C) +
+              (feat_d_m * WEIGHT_D) +
+              (feat_e_m * WEIGHT_E) +
+              (feat_f_m * WEIGHT_F),
 
-    # Weighted feminine score
-    score_k = feat_a_K * WEIGHT_A +
-              feat_b_K * WEIGHT_B +
-              feat_c_K * WEIGHT_C,
+    score_k = (feat_a_k * WEIGHT_A) +
+              (feat_b_k * WEIGHT_B) +
+              (feat_c_k * WEIGHT_C) +
+              (feat_d_k * WEIGHT_D) +
+              (feat_e_k * WEIGHT_E) +
+              (feat_f_k * WEIGHT_F),
 
-    # Total weighted evidence
     score_total = score_m + score_k,
 
-    # Confidence for the dominant gender
-    confidence = case_when(
-      score_total == 0 ~ 0,
-      TRUE             ~ pmax(score_m, score_k) / score_total
-    ),
+    # Confidence ratio (0.0 - 1.0)
+    # If total is 0, confidence is 0
+    confidence = if_else(score_total > 0,
+                         pmax(score_m, score_k) / score_total,
+                         0),
 
-    # Raw counts (unweighted, for diagnostics)
-    total_evidence_raw = (feat_a_M + feat_a_K) +
-                         (feat_b_M + feat_b_K) +
-                         (feat_c_M + feat_c_K),
-
-    # Final prediction
+    # Prediction Logic
     new_pred_gender = case_when(
-      score_total == 0                        ~ "unknown",
-      confidence >= CONFIDENCE_THRESHOLD &
-        score_m > score_k                     ~ "male",
-      confidence >= CONFIDENCE_THRESHOLD &
-        score_k > score_m                     ~ "female",
-      TRUE                                    ~ "unknown"
+      score_total == 0 ~ "unknown",
+      confidence < CONFIDENCE_THRESHOLD ~ "unknown",
+      score_m > score_k ~ "M",
+      score_k > score_m ~ "K",
+      TRUE ~ "unknown" # Tie with high confidence (rare)
     )
   )
 
 # =============================================================================
-# Summary statistics
+# 3) Summary stats
 # =============================================================================
 
-pred_summary <- predictions |>
-  count(new_pred_gender, name = "n_users") |>
-  mutate(pct = round(n_users / sum(n_users) * 100, 1))
+summary_counts <- predictions |>
+  count(new_pred_gender) |>
+  mutate(pct = n / sum(n) * 100)
 
 message("\n--- Podsumowanie predykcji ---")
-for (i in seq_len(nrow(pred_summary))) {
-  message("  ", pred_summary$new_pred_gender[i], ": ",
-          pred_summary$n_users[i], " (", pred_summary$pct[i], "%)")
-}
+print(summary_counts)
 
-coverage <- sum(predictions$new_pred_gender != "unknown") / nrow(predictions) * 100
-message("Pokrycie (coverage): ", round(coverage, 1), "%")
+classified_count <- sum(predictions$new_pred_gender != "unknown")
+total_count <- nrow(predictions)
+message("Pokrycie (coverage): ", round(classified_count / total_count * 100, 1), "%")
 
-# Users who have some evidence but fall below threshold
+# Ambiguous cases (evidence exists but conflicting or weak)
 ambiguous <- predictions |>
-  filter(new_pred_gender == "unknown", score_total > 0)
-message("Uzytkownicy z niejednoznaczna predykcja (dowody, ale ponizej progu): ",
-        nrow(ambiguous))
+  filter(new_pred_gender == "unknown", score_total > 0) |>
+  nrow()
+message("Uzytkownicy z niejednoznaczna predykcja (dowody, ale ponizej progu): ", ambiguous)
 
-# =============================================================================
-# Feature contribution breakdown
-# =============================================================================
-
+# Feature contribution analysis (how many predicted users rely on which feature)
+# We check if a user has non-zero count for a feature group
 contribution <- predictions |>
   filter(new_pred_gender != "unknown") |>
   summarise(
-    n_predicted       = n(),
-    has_feat_a        = sum((feat_a_M + feat_a_K) > 0),
-    has_feat_b        = sum((feat_b_M + feat_b_K) > 0),
-    has_feat_c        = sum((feat_c_M + feat_c_K) > 0),
-    only_feat_a       = sum((feat_a_M + feat_a_K) > 0 &
-                            (feat_b_M + feat_b_K) == 0 &
-                            (feat_c_M + feat_c_K) == 0),
-    only_new_features = sum((feat_a_M + feat_a_K) == 0 &
-                            ((feat_b_M + feat_b_K) > 0 |
-                             (feat_c_M + feat_c_K) > 0))
+    n_predicted = n(),
+    has_feat_a = sum(feat_a_m + feat_a_k > 0),
+    has_feat_b = sum(feat_b_m + feat_b_k > 0),
+    has_feat_c = sum(feat_c_m + feat_c_k > 0),
+    has_feat_d = sum(feat_d_m + feat_d_k > 0),
+    has_feat_e = sum(feat_e_m + feat_e_k > 0),
+    has_feat_f = sum(feat_f_m + feat_f_k > 0)
   )
 
 message("\n--- Wklad poszczegolnych cech (wsrod predykowanych) ---")
-message("  Ma ceche A (praet+aglt):      ", contribution$has_feat_a,
-        " / ", contribution$n_predicted)
-message("  Ma ceche B (jestem+adj):       ", contribution$has_feat_b,
-        " / ", contribution$n_predicted)
-message("  Ma ceche C (zostac+ppas):      ", contribution$has_feat_c,
-        " / ", contribution$n_predicted)
-message("  Tylko cecha A (baseline-like):  ", contribution$only_feat_a)
-message("  Tylko nowe cechy (B lub C):     ", contribution$only_new_features)
+message("  Ma ceche A (praet+aglt):      ", contribution$has_feat_a, " / ", contribution$n_predicted)
+message("  Ma ceche B (jestem+adj):       ", contribution$has_feat_b, " / ", contribution$n_predicted)
+message("  Ma ceche C (zostac+ppas):      ", contribution$has_feat_c, " / ", contribution$n_predicted)
+message("  Ma ceche D (winien):           ", contribution$has_feat_d, " / ", contribution$n_predicted)
+message("  Ma ceche E (future):           ", contribution$has_feat_e, " / ", contribution$n_predicted)
+message("  Ma ceche F (conditional):      ", contribution$has_feat_f, " / ", contribution$n_predicted)
 
 # =============================================================================
 # Save output
@@ -155,13 +140,12 @@ dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
 output <- predictions |>
   select(user_id,
-         feat_a_M, feat_a_K,
-         feat_b_M, feat_b_K,
-         feat_c_M, feat_c_K,
+         starts_with("feat_"),
          score_m, score_k, score_total,
          confidence, new_pred_gender)
 
 output_path <- file.path(output_dir, "new_gender_predictions.csv")
 write_csv(output, output_path)
-message("\nZapisano: ", output_path)
+
+message("Zapisano: ", output_path)
 message("02_predict_gender.R zakonczone: ", Sys.time())
