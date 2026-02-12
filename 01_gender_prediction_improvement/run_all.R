@@ -3,6 +3,8 @@
 # =============================================================================
 # Usage: source this file from the project root, or run:
 #   Rscript 01_gender_prediction_improvement/run_all.R
+# Optional DB overwrite:
+#   Rscript 01_gender_prediction_improvement/run_all.R --overwrite-users-pred-gender
 #
 # Steps:
 #   1) Extract morphological gender features from DB (SQL aggregation)
@@ -12,9 +14,13 @@
 
 library(here)
 
+args <- commandArgs(trailingOnly = TRUE)
+overwrite_users_pred_gender <- "--overwrite-users-pred-gender" %in% args
+
 message("============================================")
 message(" Predykcja płci gramatycznej - ulepszenie")
 message(" Start: ", Sys.time())
+message(" Nadpisanie users.pred_gender: ", ifelse(overwrite_users_pred_gender, "TAK", "NIE"))
 message("============================================\n")
 
 # 1) Extract features from database

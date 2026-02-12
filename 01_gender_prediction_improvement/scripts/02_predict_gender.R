@@ -19,6 +19,13 @@ library(dplyr)
 library(readr)
 library(here)
 
+# CLI option: write predictions back to users.pred_gender
+# Usage examples:
+#   Rscript 01_gender_prediction_improvement/scripts/02_predict_gender.R
+#   Rscript 01_gender_prediction_improvement/scripts/02_predict_gender.R --overwrite-users-pred-gender
+args <- commandArgs(trailingOnly = TRUE)
+overwrite_users_pred_gender <- "--overwrite-users-pred-gender" %in% args
+
 message("\n=== PREDYKCJA PŁCI GRAMATYCZNEJ (algorytm głosowania) ===")
 message("Start: ", Sys.time())
 
@@ -154,4 +161,47 @@ output_path <- file.path(output_dir, "new_gender_predictions.csv")
 write_csv(output, output_path)
 
 message("Zapisano: ", output_path)
+
+# =============================================================================
+# Optional: overwrite users.pred_gender in DB
+# =============================================================================
+
+if (overwrite_users_pred_gender) {
+  message("\nTryb DB overwrite: aktualizacja users.pred_gender...")
+
+  library(DBI)
+
+  source(here::here("database", "db_connection.R"))
+
+  update_df <- output |>
+    transmute(
+      id = as.numeric(user_id),
+      pred_gender = if_else(new_pred_gender == "unknown", NA_character_, new_pred_gender)
+    )
+
+  dbWithTransaction(con, {
+    dbExecute(con, "DROP TABLE IF EXISTS tmp_gender_predictions")
+
+    dbWriteTable(
+      con,
+      name = "tmp_gender_predictions",
+      value = update_df,
+      temporary = TRUE,
+      overwrite = TRUE
+    )
+
+    updated_rows <- dbExecute(con, "
+      UPDATE users u
+      SET pred_gender = t.pred_gender
+      FROM tmp_gender_predictions t
+      WHERE u.id = t.id
+    ")
+
+    message("Zaktualizowano users.pred_gender dla ", updated_rows, " użytkowników")
+  })
+
+  dbDisconnect(con)
+  message("Połączenie z bazą zamknięte po aktualizacji users.pred_gender")
+}
+
 message("02_predict_gender.R zakończone: ", Sys.time())
