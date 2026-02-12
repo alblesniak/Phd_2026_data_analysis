@@ -1,5 +1,5 @@
 # =============================================================================
-# shared/database/db_connection.R - Centralized Database Connection
+# database/db_connection.R - Centralized Database Connection
 # =============================================================================
 # Handles loading environment variables and establishing connection to PostgreSQL.
 # Creates a 'con' object in the environment.
