@@ -36,7 +36,7 @@ WEIGHT_F <- 1.0   # Conditional (zrobiłbym)
 WEIGHT_G <- 0.8   # Verba sentiendi (czuję się)
 
 # Thresholds
-CONFIDENCE_THRESHOLD <- 0.60  # Require > 60% of weighted evidence for one side
+CONFIDENCE_THRESHOLD <- 0.50  # Require > 50% of weighted evidence for one side
 
 # =============================================================================
 # 1) Load features
