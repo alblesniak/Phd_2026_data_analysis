@@ -10,7 +10,7 @@ library(here)
 library(DBI)
 
 # --- Database connection ---
-source(here::here("00_basic_corpus_statistics", "scripts", "db_connection.R"))
+source(here::here("shared", "database", "db_connection.R"))
 
 message("\n=== DEBUG: STRUKTURA TOKENOW W BAZIE ===")
 message("Start: ", Sys.time())
