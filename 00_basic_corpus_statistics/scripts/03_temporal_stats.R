@@ -24,8 +24,8 @@ if (!exists("posts_per_year")) {
 # =============================================================================
 
 message("\n=== ANALIZA CZASOWA ===")
-message("Najwczesniejszy post: ", corpus_min_date)
-message("Najpozniejszy post:   ", corpus_max_date)
+message("Najwcześniejszy post: ", corpus_min_date)
+message("Najpóźniejszy post:   ", corpus_max_date)
 message("Zakres:               ",
         as.numeric(difftime(corpus_max_date, corpus_min_date, units = "days")),
         " dni")
@@ -39,7 +39,7 @@ posts_per_year_clean <- posts_per_year |>
   filter(rok >= 2000, rok <= as.integer(format(Sys.Date(), "%Y")))
 
 save_table(
-  posts_per_year_clean |> rename(Rok = rok, `Liczba postow` = n_posts),
+  posts_per_year_clean |> rename(Rok = rok, `Liczba postów` = n_posts),
   "02_posty_wg_roku"
 )
 
@@ -66,13 +66,13 @@ p_temporal <- ggplot(posts_per_year_clean, aes(x = rok, y = n_posts)) +
     expand = expansion(mult = c(0.05, 0.15))
   ) +
   labs(
-    title    = "Liczba postow w poszczegolnych latach",
+    title    = "Liczba postów w poszczególnych latach",
     subtitle = paste0(
       "Zakres czasowy korpusu: ", corpus_min_date, " - ", corpus_max_date
     ),
     x       = "Rok",
-    y       = "Liczba postow",
-    caption = "Zrodlo: baza danych forums_scraper"
+    y       = "Liczba postów",
+    caption = "Źródło: baza danych forums_scraper"
   ) +
   theme_academic()
 
@@ -87,7 +87,7 @@ posts_per_year_forum_clean <- posts_per_year_forum |>
 
 save_table(
   posts_per_year_forum_clean |>
-    rename(Forum = forum, Rok = rok, `Liczba postow` = n_posts),
+    rename(Forum = forum, Rok = rok, `Liczba postów` = n_posts),
   "03_posty_wg_roku_i_forum"
 )
 
@@ -108,14 +108,14 @@ p_temporal_forum <- ggplot(
     expand = expansion(mult = c(0.05, 0.10))
   ) +
   labs(
-    title    = "Dynamika postow w poszczegolnych latach wg forum",
+    title    = "Dynamika postów w poszczególnych latach wg forum",
     subtitle = paste0(
       "Zakres: ", corpus_min_date, " - ", corpus_max_date
     ),
     x       = "Rok",
-    y       = "Liczba postow",
+    y       = "Liczba postów",
     color   = "Forum",
-    caption = "Zrodlo: baza danych forums_scraper"
+    caption = "Źródło: baza danych forums_scraper"
   ) +
   theme_academic()
 
@@ -141,12 +141,12 @@ p_stacked <- ggplot(
     expand = expansion(mult = c(0, 0.05))
   ) +
   labs(
-    title    = "Udzial for w produkcji postow w kolejnych latach",
+    title    = "Udział forów w produkcji postów w kolejnych latach",
     subtitle = "Wykres warstwowy (area chart)",
     x       = "Rok",
-    y       = "Liczba postow",
+    y       = "Liczba postów",
     fill    = "Forum",
-    caption = "Zrodlo: baza danych forums_scraper"
+    caption = "Źródło: baza danych forums_scraper"
   ) +
   theme_academic()
 

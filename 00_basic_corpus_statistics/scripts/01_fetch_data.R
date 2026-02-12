@@ -24,7 +24,7 @@ total_sections <- dbGetQuery(con, "SELECT COUNT(*) AS n FROM sections")$n
 total_forums <- dbGetQuery(con, "SELECT COUNT(*) AS n FROM forums")$n
 
 general_counts <- tibble(
-  metryka = c("Fora", "Sekcje", "Watki", "Uzytkownicy", "Posty", "Tokeny LPMN"),
+  metryka = c("Fora", "Sekcje", "Wątki", "Użytkownicy", "Posty", "Tokeny LPMN"),
   wartosc = c(total_forums, total_sections, total_threads,
               total_users, total_posts, total_tokens)
 )
@@ -139,7 +139,7 @@ date_range <- dbGetQuery(con, "SELECT
 
 corpus_min_date <- as.Date(date_range$min_date)
 corpus_max_date <- as.Date(date_range$max_date)
-message("Date range: ", corpus_min_date, " to ", corpus_max_date)
+message("Zakres dat: ", corpus_min_date, " to ", corpus_max_date)
 
 # =============================================================================
 # 10) User activity distribution (posts per user)

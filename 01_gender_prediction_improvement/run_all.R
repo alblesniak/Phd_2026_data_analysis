@@ -13,7 +13,7 @@
 library(here)
 
 message("============================================")
-message(" Predykcja plci gramatycznej - ulepszenie")
+message(" Predykcja płci gramatycznej - ulepszenie")
 message(" Start: ", Sys.time())
 message("============================================\n")
 
@@ -30,5 +30,5 @@ source(here("01_gender_prediction_improvement", "scripts",
             "03_evaluate_comparison.R"))
 
 message("\n============================================")
-message(" Pipeline zakonczony: ", Sys.time())
+message(" Pipeline zakończony: ", Sys.time())
 message("============================================")

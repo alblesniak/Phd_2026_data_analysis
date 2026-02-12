@@ -50,12 +50,12 @@ forum_summary_full <- bind_rows(forum_summary, forum_summary_total)
 forum_summary_output <- forum_summary_full |>
   rename(
     Forum              = forum,
-    `Liczba postow`    = n_posts,
-    `Liczba watkow`    = n_threads,
-    `Liczba uzytk.`    = n_users,
-    `Liczba tokenow`   = n_tokens,
-    `% postow`         = procent_postow,
-    `% tokenow`        = procent_tokenow
+    `Liczba postów`    = n_posts,
+    `Liczba wątków`    = n_threads,
+    `Liczba użytk.`    = n_users,
+    `Liczba tokenów`   = n_tokens,
+    `% postów`         = procent_postow,
+    `% tokenów`        = procent_tokenow
   )
 
 save_table(forum_summary_output, "01_podsumowanie_korpusu")
@@ -63,8 +63,8 @@ save_table(forum_summary_output, "01_podsumowanie_korpusu")
 message("\n=== PODSUMOWANIE KORPUSU ===")
 message("Posty:        ", fmt_number(total_posts))
 message("Tokeny LPMN:  ", fmt_number(total_tokens))
-message("Watki:        ", fmt_number(total_threads))
-message("Uzytkownicy:  ", fmt_number(total_users))
+message("Wątki:        ", fmt_number(total_threads))
+message("Użytkownicy:  ", fmt_number(total_users))
 message("Sekcje:       ", fmt_number(total_sections))
 message("Fora:         ", fmt_number(total_forums))
 
@@ -97,11 +97,11 @@ p_posts_forum <- ggplot(plot_data, aes(
     expand = expansion(mult = c(0, 0.25))
   ) +
   labs(
-    title    = "Rozklad postow w korpusie wg forum",
-    subtitle = paste0("Lacznie: ", fmt_number(total_posts), " postow"),
+    title    = "Rozkład postów w korpusie wg forum",
+    subtitle = paste0("Łącznie: ", fmt_number(total_posts), " postów"),
     x        = "Forum",
-    y        = "Liczba postow",
-    caption  = "Zrodlo: baza danych forums_scraper"
+    y        = "Liczba postów",
+    caption  = "Źródło: baza danych forums_scraper"
   ) +
   theme_academic()
 
@@ -136,11 +136,11 @@ p_tokens_forum <- ggplot(plot_data_tokens, aes(
     expand = expansion(mult = c(0, 0.25))
   ) +
   labs(
-    title    = "Rozklad tokenow w korpusie wg forum",
-    subtitle = paste0("Lacznie: ", fmt_number(total_tokens), " tokenow (analiza LPMN)"),
+    title    = "Rozkład tokenów w korpusie wg forum",
+    subtitle = paste0("Łącznie: ", fmt_number(total_tokens), " tokenów (analiza LPMN)"),
     x        = "Forum",
-    y        = "Liczba tokenow",
-    caption  = "Zrodlo: baza danych forums_scraper"
+    y        = "Liczba tokenów",
+    caption  = "Źródło: baza danych forums_scraper"
   ) +
   theme_academic()
 

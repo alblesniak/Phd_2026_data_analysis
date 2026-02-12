@@ -19,7 +19,7 @@ library(dplyr)
 library(readr)
 library(here)
 
-message("\n=== PREDYKCJA PLCI GRAMATYCZNEJ (algorytm glosowania) ===")
+message("\n=== PREDYKCJA PŁCI GRAMATYCZNEJ (algorytm głosowania) ===")
 message("Start: ", Sys.time())
 
 # =============================================================================
@@ -49,7 +49,7 @@ if (!file.exists(features_path)) {
 }
 
 features <- read_csv(features_path, show_col_types = FALSE)
-message("Wczytano cechy dla ", nrow(features), " uzytkownikow")
+message("Wczytano cechy dla ", nrow(features), " użytkowników")
 
 # =============================================================================
 # 2) Calculate Scores
@@ -111,7 +111,7 @@ message("Pokrycie (coverage): ", round(classified_count / total_count * 100, 1),
 ambiguous <- predictions |>
   filter(new_pred_gender == "unknown", score_total > 0) |>
   nrow()
-message("Uzytkownicy z niejednoznaczna predykcja (dowody, ale ponizej progu): ", ambiguous)
+message("Użytkownicy z niejednoznaczną predykcją (dowody, ale poniżej progu): ", ambiguous)
 
 # Feature contribution analysis (how many predicted users rely on which feature)
 # We check if a user has non-zero count for a feature group
@@ -128,14 +128,14 @@ contribution <- predictions |>
     has_feat_g = sum(feat_g_m + feat_g_k > 0)
   )
 
-message("\n--- Wklad poszczegolnych cech (wsrod predykowanych) ---")
-message("  Ma ceche A (praet+aglt):      ", contribution$has_feat_a, " / ", contribution$n_predicted)
-message("  Ma ceche B (jestem+adj):       ", contribution$has_feat_b, " / ", contribution$n_predicted)
-message("  Ma ceche C (zostac+ppas):      ", contribution$has_feat_c, " / ", contribution$n_predicted)
-message("  Ma ceche D (winien):           ", contribution$has_feat_d, " / ", contribution$n_predicted)
-message("  Ma ceche E (future):           ", contribution$has_feat_e, " / ", contribution$n_predicted)
-message("  Ma ceche F (conditional):      ", contribution$has_feat_f, " / ", contribution$n_predicted)
-message("  Ma ceche G (czuc sie+adj):     ", contribution$has_feat_g, " / ", contribution$n_predicted)
+message("\n--- Wkład poszczególnych cech (wśród predykowanych) ---")
+message("  Ma cechę A (praet+aglt):      ", contribution$has_feat_a, " / ", contribution$n_predicted)
+message("  Ma cechę B (jestem+adj):       ", contribution$has_feat_b, " / ", contribution$n_predicted)
+message("  Ma cechę C (zostać+ppas):      ", contribution$has_feat_c, " / ", contribution$n_predicted)
+message("  Ma cechę D (winien):           ", contribution$has_feat_d, " / ", contribution$n_predicted)
+message("  Ma cechę E (future):           ", contribution$has_feat_e, " / ", contribution$n_predicted)
+message("  Ma cechę F (conditional):      ", contribution$has_feat_f, " / ", contribution$n_predicted)
+message("  Ma cechę G (czuć się+adj):     ", contribution$has_feat_g, " / ", contribution$n_predicted)
 
 # =============================================================================
 # Save output
@@ -154,4 +154,4 @@ output_path <- file.path(output_dir, "new_gender_predictions.csv")
 write_csv(output, output_path)
 
 message("Zapisano: ", output_path)
-message("02_predict_gender.R zakonczone: ", Sys.time())
+message("02_predict_gender.R zakończone: ", Sys.time())
