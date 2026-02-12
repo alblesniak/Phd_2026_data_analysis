@@ -1,0 +1,130 @@
+11395|Dolina Modlitwy|Regulamin forum
+11396|Dolina Modlitwy|Informacje forumowe
+11397|Dolina Modlitwy|Przywitaj się i daj się poznać
+11398|Dolina Modlitwy|Trójca Święta
+11399|Dolina Modlitwy|Biblia
+11400|Dolina Modlitwy|Liturgia
+11401|Dolina Modlitwy|Duchowość
+11402|Dolina Modlitwy|Modlitwa
+11403|Dolina Modlitwy|Maryja
+11404|Dolina Modlitwy|Święci i błogosławieni
+11405|Dolina Modlitwy|Niebo, czyściec, życie wieczne
+11406|Dolina Modlitwy|Szatan, piekło, śmierć
+11407|Dolina Modlitwy|Grzech - spowiedź - pokuta i miłosierdzie
+11408|Dolina Modlitwy|Kościół
+11409|Dolina Modlitwy|Świadectwa Bożego działania w naszym życiu
+11410|Dolina Modlitwy|Wspólnoty i ruchy katolickie
+11411|Dolina Modlitwy|Narzeczeństwo, małżeństwo, rodzina
+11412|Dolina Modlitwy|Życie katolickie
+11413|Dolina Modlitwy|Pytania do księdza
+11414|Dolina Modlitwy|Pozostałe tematy
+11415|Dolina Modlitwy|Offtop, czyli mniej poważne rozmowy
+11416|Dolina Modlitwy|Książki
+11417|Dolina Modlitwy|Muzyka
+11418|Dolina Modlitwy|Film
+11419|Dolina Modlitwy|Nasze zdjęcia
+11378|radiokatolik.pl|Chrześcijaństwo, ekumenizm
+11379|radiokatolik.pl|Katolicyzm
+11380|radiokatolik.pl|Duszpasterstwo
+11381|radiokatolik.pl|Wokół rodziny
+11382|radiokatolik.pl|Świadectwa
+11383|radiokatolik.pl|Chrześcijaństwo, ateizm, religie, filozofie
+11384|radiokatolik.pl|Aktualności
+11385|radiokatolik.pl|Nauka
+11386|radiokatolik.pl|Społeczeństwo i historia
+11387|radiokatolik.pl|Komputer i radio
+11388|radiokatolik.pl|Strony WWW
+11389|radiokatolik.pl|Hyde Park
+11390|radiokatolik.pl|Uwagi o serwisie
+11391|radiokatolik.pl|Archiwum
+11392|radiokatolik.pl|Kosz
+23350|wiara.pl|Biblia
+23351|wiara.pl|Prawo Kościelne
+23352|wiara.pl|Dorosłym wstęp wzbroniony ...
+23353|wiara.pl|Liturgia
+23354|wiara.pl|Papież
+23355|wiara.pl|Moderacja
+23356|wiara.pl|Co wspólnego mają Ateny z Jerozolimą?
+23357|wiara.pl|Kościół w społeczeństwie
+23358|wiara.pl|Mini poradnik filozoficzny
+23359|wiara.pl|Pogadanki z etyki
+23360|wiara.pl|Internet
+23361|wiara.pl|Sakramenty
+23362|wiara.pl|Maryja i święci
+23363|wiara.pl|Rodzina chrześcijańska
+23364|wiara.pl|Wierzyć, nie wierzyć?
+23365|wiara.pl|Kultura
+23366|wiara.pl|Modlitwa i formacja
+23367|wiara.pl|Duchowość chrześcijańska
+23368|wiara.pl|Z życia Kościoła
+23369|wiara.pl|Z kraju i ze świata
+23370|wiara.pl|Tematy nieaktualne
+23371|wiara.pl|Tematy zamknięte
+23372|wiara.pl|Katecheza w szkole
+23373|wiara.pl|Problem sekt i nowych ruchów religijnych
+23374|wiara.pl|Problemy i uwagi związane z czatem
+23375|wiara.pl|Ogłoszenia, informacje, apele i prośby
+23376|wiara.pl|Hyde Park
+23377|wiara.pl|Wiara i Prawda
+23378|wiara.pl|Wiara a nauka
+23379|wiara.pl|Prawdy wiary
+23380|wiara.pl|Pójdź za Mną
+23381|wiara.pl|Żyć wiarą
+23382|wiara.pl|W kręgu New Age
+23383|wiara.pl|Ciekawy artykuł?
+23384|wiara.pl|O Bogu w sieci
+23385|wiara.pl|Inne religie
+23386|wiara.pl|Ekumenizm
+23387|wiara.pl|Gadaj dalej ...
+23388|wiara.pl|Sam wymyśl temat
+1|Z Chrystusem|REGULAMIN
+2|Z Chrystusem|Felietony
+3|Z Chrystusem|Informacje i ogłoszenia
+4|Z Chrystusem|Propozycje, sugestie, błędy, pytania
+5|Z Chrystusem|Przywitaj się
+6|Z Chrystusem|Biblioteczka wiedzy
+7|Z Chrystusem|Biblia, Nowy Testament i Stary Testament
+8|Z Chrystusem|Wersety biblijne
+9|Z Chrystusem|Trójca Święta
+10|Z Chrystusem|Maryja
+11|Z Chrystusem|Życie katolickie
+12|Z Chrystusem|Świadectwa działania Boga
+13|Z Chrystusem|Modlitwa
+14|Z Chrystusem|Sakramenty święte
+15|Z Chrystusem|Życie, śmierć, wieczność
+16|Z Chrystusem|Niebo, piekło, czyściec
+17|Z Chrystusem|Szatan, grzech
+18|Z Chrystusem|Rodzina, małżeństwo, narzeczeni
+19|Z Chrystusem|Święta i zwyczaje religijne
+20|Z Chrystusem|Święci i postacie biblijne
+21|Z Chrystusem|Forum biblijne, wydarzenia biblijne
+22|Z Chrystusem|Pozostałe Tematy Chrześcijańskie
+23|Z Chrystusem|Historia Chrześcijaństwa, postacie, wydarzenia
+24|Z Chrystusem|Ekumenizm
+25|Z Chrystusem|Apologetyka
+26|Z Chrystusem|Społeczna Nauka Kościoła
+27|Z Chrystusem|Kościół Prawosławny
+28|Z Chrystusem|Protestantyzm
+29|Z Chrystusem|Judaizm
+30|Z Chrystusem|Islam
+31|Z Chrystusem|Inne religie i ruchy parareligijne
+32|Z Chrystusem|Ateizm, agnostycyzm, deizm
+33|Z Chrystusem|Katolicy2 (K2)
+34|Z Chrystusem|Kawiarenka
+35|Z Chrystusem|Książki
+36|Z Chrystusem|Psychologia, filozofia, czyli jak żyć dojrzale
+37|Z Chrystusem|Multimedia i rozrywka
+38|Z Chrystusem|Wydarzenia, informacje
+39|Z Chrystusem|Komputery, Internet i technologie
+40|Z Chrystusem|Paranormal
+41|Z Chrystusem|Archiwum
+42|Z Chrystusem|KOSZ
+43|Z Chrystusem|Studium Dziejów Apostolskich
+44|Z Chrystusem|Spowiedź
+45|Z Chrystusem|Grzech onanizmu
+46|Z Chrystusem|Systemy, programowanie, technicznie
+47|Z Chrystusem|manual
+48|Z Chrystusem|manual
+2425|Z Chrystusem|manual
+6022|Z Chrystusem|manual
+20743|Z Chrystusem|manual
