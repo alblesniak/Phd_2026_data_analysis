@@ -25,7 +25,7 @@ library(bit64)
 # --- Database connection ---
 source(here::here("database", "db_connection.R"))
 
-message("\n=== EKSTRAKCJA CECH PLCI GRAMATYCZNEJ (V2 - STABLE A-G) ===")
+message("\n=== EKSTRAKCJA CECH PŁCI GRAMATYCZNEJ (V2 - STABLE A-G) ===")
 message("Start: ", Sys.time())
 
 # Helper to safeguard integer64 -> numeric conversion
@@ -34,7 +34,7 @@ as_numeric_id <- function(x) as.numeric(x)
 # =============================================================================
 # Feature A: Past Tense 1st Person Singular
 # =============================================================================
-message("Pobieranie cechy A: Czas przeszly (zrobilem)...")
+message("Pobieranie cechy A: Czas przeszły (zrobiłem)...")
 query_a <- "
   WITH target_pairs AS (
     SELECT p.user_id, t1.ctag AS tag
@@ -51,7 +51,7 @@ query_a <- "
   FROM target_pairs GROUP BY user_id
 "
 feature_a <- dbGetQuery(con, query_a) |> as_tibble() |> mutate(user_id = as_numeric_id(user_id))
-message("  Cecha A: ", nrow(feature_a), " uzytkownikow")
+message("  Cecha A: ", nrow(feature_a), " użytkowników")
 
 # =============================================================================
 # Feature B: Adjectival Predicate (jestem + adj)
@@ -73,12 +73,12 @@ query_b <- "
   FROM target_pairs GROUP BY user_id
 "
 feature_b <- dbGetQuery(con, query_b) |> as_tibble() |> mutate(user_id = as_numeric_id(user_id))
-message("  Cecha B: ", nrow(feature_b), " uzytkownikow")
+message("  Cecha B: ", nrow(feature_b), " użytkowników")
 
 # =============================================================================
 # Feature C: Passive Voice (zostałem + ppas) - REVERTED TO ORIGINAL
 # =============================================================================
-message("Pobieranie cechy C: Strona bierna (zostalem zapytany)...")
+message("Pobieranie cechy C: Strona bierna (zostałem zapytany)...")
 query_c <- "
   WITH target_pairs AS (
     SELECT p.user_id, t2.ctag AS ppas_tag
@@ -95,7 +95,7 @@ query_c <- "
   FROM target_pairs GROUP BY user_id
 "
 feature_c <- dbGetQuery(con, query_c) |> as_tibble() |> mutate(user_id = as_numeric_id(user_id))
-message("  Cecha C: ", nrow(feature_c), " uzytkownikow")
+message("  Cecha C: ", nrow(feature_c), " użytkowników")
 
 # =============================================================================
 # Feature D: Winien (Powinienem)
@@ -117,12 +117,12 @@ query_d <- "
   FROM target_pairs GROUP BY user_id
 "
 feature_d <- dbGetQuery(con, query_d) |> as_tibble() |> mutate(user_id = as_numeric_id(user_id))
-message("  Cecha D: ", nrow(feature_d), " uzytkownikow")
+message("  Cecha D: ", nrow(feature_d), " użytkowników")
 
 # =============================================================================
 # Feature E: Future Compound (Będę robił)
 # =============================================================================
-message("Pobieranie cechy E: Czas przyszly zlozony (bede robil)...")
+message("Pobieranie cechy E: Czas przyszły złożony (będę robił)...")
 query_e <- "
   WITH target_pairs AS (
     SELECT p.user_id, t2.ctag AS tag
@@ -139,12 +139,12 @@ query_e <- "
   FROM target_pairs GROUP BY user_id
 "
 feature_e <- dbGetQuery(con, query_e) |> as_tibble() |> mutate(user_id = as_numeric_id(user_id))
-message("  Cecha E: ", nrow(feature_e), " uzytkownikow")
+message("  Cecha E: ", nrow(feature_e), " użytkowników")
 
 # =============================================================================
 # Feature F: Conditional (Zrobiłbym)
 # =============================================================================
-message("Pobieranie cechy F: Tryb przypuszczajacy (zrobilbym)...")
+message("Pobieranie cechy F: Tryb przypuszczający (zrobiłbym)...")
 query_f <- "
   WITH target_pairs AS (
     SELECT p.user_id, t1.ctag AS tag
@@ -163,7 +163,7 @@ query_f <- "
   FROM target_pairs GROUP BY user_id
 "
 feature_f <- dbGetQuery(con, query_f) |> as_tibble() |> mutate(user_id = as_numeric_id(user_id))
-message("  Cecha F: ", nrow(feature_f), " uzytkownikow")
+message("  Cecha F: ", nrow(feature_f), " użytkowników")
 
 # =============================================================================
 # Feature G: Verba Sentiendi (Czuję się + Adj)
@@ -203,7 +203,7 @@ query_g <- "
 "
 
 feature_g <- dbGetQuery(con, query_g) |> as_tibble() |> mutate(user_id = as_numeric_id(user_id))
-message("  Cecha G: ", nrow(feature_g), " uzytkownikow")
+message("  Cecha G: ", nrow(feature_g), " użytkowników")
 
 # =============================================================================
 # Merge all features into a single table
@@ -228,8 +228,8 @@ features_combined <- all_users |>
   # Replace NA with 0
   mutate(across(starts_with("feat_"), ~ coalesce(.x, 0)))
 
-message("\nLaczna tabela cech: ", nrow(features_combined), " uzytkownikow")
-message("  Z co najmniej 1 cecha: ",
+message("\nŁączna tabela cech: ", nrow(features_combined), " użytkowników")
+message("  Z co najmniej 1 cechą: ",
         sum(rowSums(features_combined |> select(starts_with("feat_"))) > 0))
 
 # =============================================================================
@@ -246,5 +246,5 @@ message("Zapisano: ", output_path)
 
 # Clean up
 dbDisconnect(con)
-message("Polaczenie z baza zamkniete.")
-message("01_extract_gender_features.R zakonczone: ", Sys.time())
+message("Połączenie z bazą zamknięte.")
+message("01_extract_gender_features.R zakończone: ", Sys.time())

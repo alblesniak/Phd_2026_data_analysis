@@ -38,7 +38,7 @@ posts_year_md <- posts_per_year |>
 
 # Activity quantiles
 activity_md <- activity_quantiles |>
-  mutate(row = glue("| {Kwantyl} | {`Liczba postow`} |")) |>
+  mutate(row = glue("| {Kwantyl} | {`Liczba postów`} |")) |>
   pull(row) |>
   paste(collapse = "\n")
 
@@ -59,33 +59,33 @@ gender_pred_md <- gender_predicted |>
 # =============================================================================
 
 report <- glue("
-# Opisowa analiza statystyczna korpusu forow internetowych
+# Opisowa analiza statystyczna korpusu forów internetowych
 
 > Raport wygenerowany automatycznie: {Sys.time()}
 
 ---
 
-## 1. Informacje ogolne
+## 1. Informacje ogólne
 
-Korpus sklada sie z danych zebranych z **{total_forums} for internetowych** o tematyce religijnej.
-Lacznie baza zawiera **{fmt_number(total_posts)} postow**, **{fmt_number(total_tokens)} tokenow**
-(po analizie morfologicznej LPMN), **{fmt_number(total_threads)} watkow** oraz
-**{fmt_number(total_users)} uzytkownikow**.
+Korpus składa się z danych zebranych z **{total_forums} forów internetowych** o tematyce religijnej.
+Łącznie baza zawiera **{fmt_number(total_posts)} postów**, **{fmt_number(total_tokens)} tokenów**
+(po analizie morfologicznej LPMN), **{fmt_number(total_threads)} wątków** oraz
+**{fmt_number(total_users)} użytkowników**.
 
 ### 1.1 Podsumowanie korpusu wg forum
 
-| Forum | Posty | Watki | Uzytkownicy | Tokeny | % postow | % tokenow |
+| Forum | Posty | Wątki | Użytkownicy | Tokeny | % postów | % tokenów |
 |---|---:|---:|---:|---:|---:|---:|
 {forum_md_rows}
 {totals_row}
 
-### 1.2 Rozklad postow wg forum
+### 1.2 Rozkład postów wg forum
 
-![Rozklad postow wg forum](output/plots/01_posty_wg_forum.png)
+![Rozkład postów wg forum](output/plots/01_posty_wg_forum.png)
 
-### 1.3 Rozklad tokenow wg forum
+### 1.3 Rozkład tokenów wg forum
 
-![Rozklad tokenow wg forum](output/plots/02_tokeny_wg_forum.png)
+![Rozkład tokenów wg forum](output/plots/02_tokeny_wg_forum.png)
 
 ---
 
@@ -93,17 +93,17 @@ Lacznie baza zawiera **{fmt_number(total_posts)} postow**, **{fmt_number(total_t
 
 Zakres czasowy korpusu: **{corpus_min_date}** -- **{corpus_max_date}**.
 
-### 2.1 Liczba postow w poszczegolnych latach
+### 2.1 Liczba postów w poszczególnych latach
 
-| Rok | Liczba postow |
+| Rok | Liczba postów |
 |---:|---:|
 {posts_year_md}
 
-### 2.2 Dynamika postow (wykres liniowy)
+### 2.2 Dynamika postów (wykres liniowy)
 
-![Liczba postow wg roku](output/plots/03_posty_wg_roku.png)
+![Liczba postów wg roku](output/plots/03_posty_wg_roku.png)
 
-### 2.3 Dynamika postow wg forum
+### 2.3 Dynamika postów wg forum
 
 ![Posty wg roku i forum](output/plots/04_posty_wg_roku_forum.png)
 
@@ -113,17 +113,17 @@ Zakres czasowy korpusu: **{corpus_min_date}** -- **{corpus_max_date}**.
 
 ---
 
-## 3. Analiza demograficzna uzytkownikow
+## 3. Analiza demograficzna użytkowników
 
-### 3.1 Rozklad aktywnosci (prawo Zipfa)
+### 3.1 Rozkład aktywności (prawo Zipfa)
 
-Aktywnosc uzytkownikow wykazuje typowy rozklad potegowy (prawo Zipfa):
-- **Top 1%** uzytkownikow ({fmt_number(top_1_pct_n)}) napisalo **{top_1_pct_share}%** wszystkich postow.
-- **Top 10%** uzytkownikow ({fmt_number(top_10_pct_n)}) napisalo **{top_10_pct_share}%** wszystkich postow.
+Aktywność użytkowników wykazuje typowy rozkład potęgowy (prawo Zipfa):
+- **Top 1%** użytkowników ({fmt_number(top_1_pct_n)}) napisało **{top_1_pct_share}%** wszystkich postów.
+- **Top 10%** użytkowników ({fmt_number(top_10_pct_n)}) napisało **{top_10_pct_share}%** wszystkich postów.
 
-#### Kwantyle aktywnosci (posty na uzytkownika)
+#### Kwantyle aktywności (posty na użytkownika)
 
-| Kwantyl | Liczba postow |
+| Kwantyl | Liczba postów |
 |---|---:|
 {activity_md}
 
@@ -131,48 +131,48 @@ Aktywnosc uzytkownikow wykazuje typowy rozklad potegowy (prawo Zipfa):
 
 ![Zipf](output/plots/06_zipf_aktywnosc.png)
 
-#### Histogram aktywnosci
+#### Histogram aktywności
 
 ![Histogram](output/plots/07_histogram_aktywnosc.png)
 
-### 3.2 Rozklad plci
+### 3.2 Rozkład płci
 
-#### Plec deklarowana (pole `users.gender`)
+#### Płeć deklarowana (pole `users.gender`)
 
-| Plec | Liczba | % |
+| Płeć | Liczba | % |
 |---|---:|---:|
 {gender_decl_md}
 
-![Plec deklarowana](output/plots/08_plec_deklarowana.png)
+![Płeć deklarowana](output/plots/08_plec_deklarowana.png)
 
-#### Plec predykowana (pole `users.pred_gender`)
+#### Płeć predykowana (pole `users.pred_gender`)
 
-| Plec | Liczba | % |
+| Płeć | Liczba | % |
 |---|---:|---:|
 {gender_pred_md}
 
-![Plec predykowana](output/plots/09_plec_predykowana.png)
+![Płeć predykowana](output/plots/09_plec_predykowana.png)
 
-#### Struktura plci wg forum
+#### Struktura płci wg forum
 
-![Plec wg forum](output/plots/10_plec_wg_forum.png)
+![Płeć wg forum](output/plots/10_plec_wg_forum.png)
 
 ---
 
-## 4. Pliki zrodlowe
+## 4. Pliki źródłowe
 
-Wszystkie skrypty analityczne znajduja sie w katalogu `scripts/`:
+Wszystkie skrypty analityczne znajdują się w katalogu `scripts/`:
 
 | Skrypt | Opis |
 |---|---|
 | `00_setup_theme.R` | Motyw graficzny i funkcje pomocnicze |
 | `01_fetch_data.R` | Pobranie danych z bazy PostgreSQL |
-| `02_general_stats.R` | Statystyki ogolne korpusu |
+| `02_general_stats.R` | Statystyki ogólne korpusu |
 | `03_temporal_stats.R` | Analiza czasowa (diachronia) |
-| `04_demographic_stats.R` | Demografia i aktywnosc uzytkownikow |
+| `04_demographic_stats.R` | Demografia i aktywność użytkowników |
 | `05_generate_markdown_report.R` | Generacja niniejszego raportu |
 
-Wyniki zapisane sa w:
+Wyniki zapisane są w:
 - `output/tables/` -- tabele CSV i Excel
 - `output/plots/` -- wykresy PNG i PDF
 

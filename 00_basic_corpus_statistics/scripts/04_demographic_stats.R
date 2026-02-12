@@ -45,12 +45,12 @@ top_10_pct_posts <- user_ranked |>
   sum()
 top_10_pct_share <- round(top_10_pct_posts / total_posts_active * 100, 1)
 
-message("\n=== AKTYWNOSC UZYTKOWNIKOW ===")
-message("Uzytkownicy z >= 1 postem: ", fmt_number(nrow(user_ranked)))
-message("Top 1% uzytkownikow (", fmt_number(top_1_pct_n), ") napisalo ",
-        top_1_pct_share, "% postow")
-message("Top 10% uzytkownikow (", fmt_number(top_10_pct_n), ") napisalo ",
-        top_10_pct_share, "% postow")
+message("\n=== AKTYWNOŚĆ UŻYTKOWNIKÓW ===")
+message("Użytkownicy z >= 1 postem: ", fmt_number(nrow(user_ranked)))
+message("Top 1% użytkowników (", fmt_number(top_1_pct_n), ") napisało ",
+        top_1_pct_share, "% postów")
+message("Top 10% użytkowników (", fmt_number(top_10_pct_n), ") napisało ",
+        top_10_pct_share, "% postów")
 
 # --- Log-log plot (Zipf) ---
 p_zipf <- ggplot(user_ranked, aes(x = rank, y = n_posts)) +
@@ -64,14 +64,14 @@ p_zipf <- ggplot(user_ranked, aes(x = rank, y = n_posts)) +
     breaks = c(1, 10, 100, 1000, 10000, 100000)
   ) +
   labs(
-    title = "Rozklad aktywnosci uzytkownikow (prawo Zipfa)",
+    title = "Rozkład aktywności użytkowników (prawo Zipfa)",
     subtitle = paste0(
-      "Top 1% uzytkownikow odpowiada za ", top_1_pct_share,
-      "% postow; top 10% za ", top_10_pct_share, "%"
+      "Top 1% użytkowników odpowiada za ", top_1_pct_share,
+      "% postów; top 10% za ", top_10_pct_share, "%"
     ),
-    x       = "Rang uzytkownika (skala logarytmiczna)",
-    y       = "Liczba postow (skala logarytmiczna)",
-    caption = "Zrodlo: baza danych forums_scraper"
+    x       = "Ranga użytkownika (skala logarytmiczna)",
+    y       = "Liczba postów (skala logarytmiczna)",
+    caption = "Źródło: baza danych forums_scraper"
   ) +
   theme_academic() +
   annotation_logticks(sides = "bl", linewidth = 0.2, color = "grey60")
@@ -92,11 +92,11 @@ p_hist_activity <- ggplot(
   scale_x_continuous(breaks = seq(0, 100, by = 10)) +
   scale_y_continuous(labels = label_number(big.mark = " ")) +
   labs(
-    title    = "Rozklad liczby postow na uzytkownika",
-    subtitle = "Uzytkownicy z <= 100 postami (ogon rozkladu obciety)",
-    x        = "Liczba postow",
-    y        = "Liczba uzytkownikow",
-    caption  = "Zrodlo: baza danych forums_scraper"
+    title    = "Rozkład liczby postów na użytkownika",
+    subtitle = "Użytkownicy z <= 100 postami (ogon rozkładu obcięty)",
+    x        = "Liczba postów",
+    y        = "Liczba użytkowników",
+    caption  = "Źródło: baza danych forums_scraper"
   ) +
   theme_academic()
 
@@ -104,9 +104,9 @@ save_plot(p_hist_activity, "07_histogram_aktywnosc", width = 10, height = 6)
 
 # Save user activity summary
 activity_quantiles <- tibble(
-  Kwantyl = c("Min", "Q1 (25%)", "Mediana", "Srednia",
+  Kwantyl = c("Min", "Q1 (25%)", "Mediana", "Średnia",
               "Q3 (75%)", "P90", "P95", "P99", "Max"),
-  `Liczba postow` = c(
+  `Liczba postów` = c(
     min(user_ranked$n_posts),
     quantile(user_ranked$n_posts, 0.25),
     median(user_ranked$n_posts),
@@ -132,7 +132,7 @@ gender_declared <- gender_distribution |>
   mutate(
     plec_label = case_match(
       plec_deklarowana,
-      "M"           ~ "Mezczyzna",
+      "M"           ~ "Mężczyzna",
       "K"           ~ "Kobieta",
       "brak danych" ~ "Brak danych",
       .default      = plec_deklarowana
@@ -153,7 +153,7 @@ p_gender_declared <- ggplot(
   ) +
   coord_flip() +
   scale_fill_manual(values = c(
-    "Mezczyzna"  = "#2980B9",
+    "Mężczyzna"  = "#2980B9",
     "Kobieta"     = "#E74C3C",
     "Brak danych" = "#95A5A6"
   )) +
@@ -162,12 +162,12 @@ p_gender_declared <- ggplot(
     expand = expansion(mult = c(0, 0.25))
   ) +
   labs(
-    title    = "Rozklad plci uzytkownikow (deklarowana)",
-    subtitle = paste0("Lacznie: ", fmt_number(sum(gender_declared$n_users)),
-                      " uzytkownikow"),
-    x        = "Plec",
-    y        = "Liczba uzytkownikow",
-    caption  = "Zrodlo: pole users.gender"
+    title    = "Rozkład płci użytkowników (deklarowana)",
+    subtitle = paste0("Łącznie: ", fmt_number(sum(gender_declared$n_users)),
+                      " użytkowników"),
+    x        = "Płeć",
+    y        = "Liczba użytkowników",
+    caption  = "Źródło: pole users.gender"
   ) +
   theme_academic()
 
@@ -180,9 +180,9 @@ gender_predicted <- gender_distribution |>
   mutate(
     plec_label = case_match(
       plec_predykowana,
-      "male"        ~ "Mezczyzna",
+      "male"        ~ "Mężczyzna",
       "female"      ~ "Kobieta",
-      "unknown"     ~ "Nieokreslona",
+      "unknown"     ~ "Nieokreślona",
       "brak danych" ~ "Brak danych",
       .default      = plec_predykowana
     ),
@@ -202,9 +202,9 @@ p_gender_predicted <- ggplot(
   ) +
   coord_flip() +
   scale_fill_manual(values = c(
-    "Mezczyzna"    = "#2980B9",
+    "Mężczyzna"    = "#2980B9",
     "Kobieta"       = "#E74C3C",
-    "Nieokreslona"  = "#F39C12",
+    "Nieokreślona"  = "#F39C12",
     "Brak danych"   = "#95A5A6"
   )) +
   scale_y_continuous(
@@ -212,12 +212,12 @@ p_gender_predicted <- ggplot(
     expand = expansion(mult = c(0, 0.25))
   ) +
   labs(
-    title    = "Rozklad plci uzytkownikow (predykowana przez klasyfikator)",
-    subtitle = paste0("Lacznie: ", fmt_number(sum(gender_predicted$n_users)),
-                      " uzytkownikow"),
-    x        = "Plec (predykowana)",
-    y        = "Liczba uzytkownikow",
-    caption  = "Zrodlo: pole users.pred_gender"
+    title    = "Rozkład płci użytkowników (predykowana przez klasyfikator)",
+    subtitle = paste0("Łącznie: ", fmt_number(sum(gender_predicted$n_users)),
+                      " użytkowników"),
+    x        = "Płeć (predykowana)",
+    y        = "Liczba użytkowników",
+    caption  = "Źródło: pole users.pred_gender"
   ) +
   theme_academic()
 
@@ -228,7 +228,7 @@ gender_by_forum <- gender_distribution |>
   mutate(
     plec_label = case_match(
       plec_deklarowana,
-      "M"           ~ "Mezczyzna",
+      "M"           ~ "Mężczyzna",
       "K"           ~ "Kobieta",
       "brak danych" ~ "Brak danych",
       .default      = plec_deklarowana
@@ -243,17 +243,17 @@ p_gender_forum <- ggplot(
 ) +
   geom_col(position = "fill", width = 0.7) +
   scale_fill_manual(values = c(
-    "Mezczyzna"  = "#2980B9",
+    "Mężczyzna"  = "#2980B9",
     "Kobieta"     = "#E74C3C",
     "Brak danych" = "#95A5A6"
   )) +
   scale_y_continuous(labels = label_percent()) +
   labs(
-    title   = "Struktura plci uzytkownikow wg forum (deklarowana)",
+    title   = "Struktura płci użytkowników wg forum (deklarowana)",
     x       = "Forum",
-    y       = "Udzial procentowy",
-    fill    = "Plec",
-    caption = "Zrodlo: pole users.gender"
+    y       = "Udział procentowy",
+    fill    = "Płeć",
+    caption = "Źródło: pole users.gender"
   ) +
   theme_academic() +
   theme(axis.text.x = element_text(angle = 15, hjust = 1))
@@ -262,11 +262,11 @@ save_plot(p_gender_forum, "10_plec_wg_forum", width = 10, height = 6)
 
 # Save gender tables
 save_table(
-  gender_declared |> rename(Plec = plec_label, `Liczba` = n_users, `%` = procent),
+  gender_declared |> rename(Płeć = plec_label, `Liczba` = n_users, `%` = procent),
   "05_plec_deklarowana"
 )
 save_table(
-  gender_predicted |> rename(Plec = plec_label, `Liczba` = n_users, `%` = procent),
+  gender_predicted |> rename(Płeć = plec_label, `Liczba` = n_users, `%` = procent),
   "06_plec_predykowana"
 )
 

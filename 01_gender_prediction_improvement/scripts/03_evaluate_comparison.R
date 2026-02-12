@@ -28,7 +28,7 @@ source(here::here("00_basic_corpus_statistics", "scripts", "00_setup_theme.R"))
 # --- Database connection ---
 source(here::here("database", "db_connection.R"))
 
-message("\n=== EWALUACJA I POROWNANIE MODELI PREDYKCJI PLCI === ")
+message("\n=== EWALUACJA I PORÓWNANIE MODELI PREDYKCJI PŁCI === ")
 message("Start: ", Sys.time())
 
 # =============================================================================
@@ -93,7 +93,7 @@ eval_data <- users_db |>
     has_gt = ground_truth %in% c("M", "K")
   )
 
-message("Polaczono dane. Liczba uzytkownikow z GT: ", sum(eval_data$has_gt))
+message("Połączono dane. Liczba użytkowników z GT: ", sum(eval_data$has_gt))
 
 # =============================================================================
 # 3) Standard Comparison (Baseline vs Fixed Threshold from Step 02)
@@ -144,7 +144,7 @@ metrics_comparison <- bind_rows(
   bind_cols(model = "New R Algorithm", as_tibble(metrics_nw))
 )
 
-message("\n--- POROWNANIE METRYK (Fixed Threshold) ---")
+message("\n--- PORÓWNANIE METRYK (Fixed Threshold) ---")
 print(metrics_comparison |> select(model, n_ground_truth, n_predicted, coverage, accuracy))
 
 # Save standard outputs
@@ -157,7 +157,7 @@ write_csv(metrics_comparison, file.path(tables_dir, "01_metrics_comparison.csv")
 # =============================================================================
 
 if (RUN_THRESHOLD_ANALYSIS) {
-  message("\n--- ANALIZA WRAZLIWOSCI PROGU (Threshold Sensitivity) ---")
+  message("\n--- ANALIZA WRAŻLIWOŚCI PROGU (Threshold Sensitivity) ---")
   
   # Sequence from 0.1 to 0.9
   thresholds <- seq(0.1, 0.9, by = 0.1)
@@ -192,7 +192,7 @@ if (RUN_THRESHOLD_ANALYSIS) {
     )
   }
   
-  message("Symulacja dla progow: ", paste(thresholds, collapse=", "))
+  message("Symulacja dla progów: ", paste(thresholds, collapse=", "))
   sensitivity_results <- map_dfr(thresholds, ~ simulate_threshold(.x, eval_data))
   
   # Print results
@@ -209,19 +209,19 @@ if (RUN_THRESHOLD_ANALYSIS) {
   results_long <- sensitivity_results |>
     pivot_longer(cols = c(accuracy_on_gt, coverage_total), 
                  names_to = "metric", values_to = "value") |>
-    mutate(metric_label = if_else(metric == "accuracy_on_gt", "Accuracy (na GT)", "Coverage (Cala baza)"))
+    mutate(metric_label = if_else(metric == "accuracy_on_gt", "Accuracy (na GT)", "Coverage (Cała baza)"))
   
   p_sens <- ggplot(results_long, aes(x = threshold, y = value, color = metric_label)) +
     geom_line(linewidth = 1.2) +
     geom_point(size = 3) +
     scale_y_continuous(labels = percent_format(accuracy = 1), limits = c(0, 1)) +
     scale_x_continuous(breaks = thresholds) +
-    scale_color_manual(values = c("Accuracy (na GT)" = "#27AE60", "Coverage (Cala baza)" = "#E74C3C")) +
+    scale_color_manual(values = c("Accuracy (na GT)" = "#27AE60", "Coverage (Cała baza)" = "#E74C3C")) +
     labs(
-      title = "Analiza wrazliwosci progu (Threshold Sensitivity)",
-      subtitle = "Jak prog pewnosci wplywa na Jakosc vs Ilosc",
-      x = "Prog pewnosci (Threshold)",
-      y = "Wartosc",
+      title = "Analiza wrażliwości progu (Threshold Sensitivity)",
+      subtitle = "Jak próg pewności wpływa na Jakość vs Ilość",
+      x = "Próg pewności (Threshold)",
+      y = "Wartość",
       color = "Metryka"
     ) +
     theme_academic() +
@@ -231,4 +231,4 @@ if (RUN_THRESHOLD_ANALYSIS) {
   message("Zapisano wykres: 05_threshold_sensitivity.png")
 }
 
-message("03_evaluate_comparison.R zakonczone: ", Sys.time())
+message("03_evaluate_comparison.R zakończone: ", Sys.time())
