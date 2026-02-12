@@ -26,7 +26,7 @@ RUN_THRESHOLD_ANALYSIS <-   FALSE  # Set to FALSE to skip the loop
 source(here::here("00_basic_corpus_statistics", "scripts", "00_setup_theme.R"))
 
 # --- Database connection ---
-source(here::here("shared", "database", "db_connection.R"))
+source(here::here("database", "db_connection.R"))
 
 message("\n=== EWALUACJA I POROWNANIE MODELI PREDYKCJI PLCI === ")
 message("Start: ", Sys.time())
