@@ -1,7 +1,7 @@
 # =============================================================================
 # 01_fetch_data.R - Fetch aggregated data from PostgreSQL
 # =============================================================================
-# Connects to DB via db_connection.R and retrieves pre-aggregated summaries.
+# Connects to DB via database/db_connection.R and retrieves pre-aggregated summaries.
 # =============================================================================
 
 library(dplyr)
@@ -10,7 +10,7 @@ library(here)
 
 # --- 1) Setup Database Connection ---
 # This script loads libs (DBI, RPostgres), .env, and creates 'con' object
-source(here::here("00_basic_corpus_statistics", "scripts", "db_connection.R"))
+source(here::here("database", "db_connection.R"))
 
 # =============================================================================
 # 2) General counts
