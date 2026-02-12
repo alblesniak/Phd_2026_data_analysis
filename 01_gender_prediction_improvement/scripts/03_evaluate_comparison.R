@@ -23,6 +23,9 @@ source(here::here("00_basic_corpus_statistics", "scripts", "db_connection.R"))
 message("\n=== EWALUACJA I POROWNANIE MODELI PREDYKCJI PLCI === ")
 message("Start: ", Sys.time())
 
+# Optional add-on analysis: threshold sweep for Accuracy/Coverage sweet spot
+RUN_THRESHOLD_ANALYSIS <- TRUE
+
 # =============================================================================
 # 1) Load data
 # =============================================================================
@@ -211,11 +214,90 @@ message("  Dokladnosc na tych uzytkownikach: ", round(gain_validation$accuracy, 
 
 
 # =============================================================================
-# 5) Visualizations
+# 5) Optional Threshold Optimization Analysis
 # =============================================================================
 
+tables_dir <- here::here("01_gender_prediction_improvement", "output", "tables")
 plot_dir <- here::here("01_gender_prediction_improvement", "output", "plots")
+dir.create(tables_dir, recursive = TRUE, showWarnings = FALSE)
 dir.create(plot_dir, recursive = TRUE, showWarnings = FALSE)
+
+if (isTRUE(RUN_THRESHOLD_ANALYSIS)) {
+  message("\n--- ANALIZA OPTYMALIZACJI PROGU (0.50-0.99) ---")
+
+  thresholds <- seq(0.50, 0.99, by = 0.01)
+  total_users <- nrow(eval_data)
+
+  threshold_results <- lapply(thresholds, function(thr) {
+    simulated_pred <- if_else(
+      !is.na(eval_data$confidence) & eval_data$confidence >= thr,
+      eval_data$new_pred_gender,
+      "unknown"
+    )
+
+    classified_total <- sum(simulated_pred %in% c("M", "K"), na.rm = TRUE)
+    gt_idx <- eval_data$has_gt
+    classified_gt <- sum(gt_idx & simulated_pred %in% c("M", "K"), na.rm = TRUE)
+    correct_gt <- sum(gt_idx & simulated_pred == eval_data$ground_truth, na.rm = TRUE)
+
+    tibble(
+      threshold = thr,
+      n_users_total = total_users,
+      n_classified_total = classified_total,
+      n_ground_truth = sum(gt_idx, na.rm = TRUE),
+      n_classified_gt = classified_gt,
+      n_correct_gt = correct_gt,
+      accuracy = if (classified_gt > 0) correct_gt / classified_gt * 100 else 0,
+      coverage = if (total_users > 0) classified_total / total_users * 100 else 0
+    )
+  }) |>
+    bind_rows()
+
+  write_csv(threshold_results, file.path(tables_dir, "05_threshold_optimization.csv"))
+
+  threshold_plot_data <- threshold_results |>
+    select(threshold, accuracy, coverage) |>
+    pivot_longer(cols = c(accuracy, coverage), names_to = "metric", values_to = "value") |>
+    mutate(metric = recode(metric, accuracy = "Accuracy", coverage = "Coverage"))
+
+  p_threshold <- ggplot(threshold_plot_data, aes(x = threshold, y = value, color = metric)) +
+    geom_line(linewidth = 1.1) +
+    geom_vline(xintercept = c(0.5, 0.6, 0.8), linetype = "dashed", color = "grey45") +
+    annotate("text", x = c(0.5, 0.6, 0.8), y = 98,
+             label = c("0.5", "0.6", "0.8"),
+             angle = 90, vjust = -0.5, hjust = 1, size = 3, color = "grey35") +
+    scale_color_manual(values = c("Accuracy" = "#1F77B4", "Coverage" = "#E15759")) +
+    scale_x_continuous(limits = c(0.5, 1.0), breaks = seq(0.5, 1.0, by = 0.1),
+                       labels = number_format(accuracy = 0.01)) +
+    scale_y_continuous(limits = c(0, 100), labels = label_percent(scale = 1)) +
+    labs(
+      title = "Sweet Spot Analysis: Accuracy vs Coverage",
+      subtitle = "Symulacja decyzji 'unknown' przy rosnacym progu confidence",
+      x = "Confidence Threshold",
+      y = "Percentage",
+      color = NULL
+    ) +
+    theme_academic() +
+    theme(legend.position = "bottom")
+
+  ggsave(
+    filename = file.path(plot_dir, "05_threshold_sweet_spot.png"),
+    plot = p_threshold,
+    width = 10,
+    height = 6,
+    dpi = 300
+  )
+
+  message("Zapisano: 05_threshold_optimization.csv")
+  message("Zapisano: 05_threshold_sweet_spot.png")
+} else {
+  message("\nPomijam analize optymalizacji progu (RUN_THRESHOLD_ANALYSIS = FALSE).")
+}
+
+
+# =============================================================================
+# 6) Visualizations
+# =============================================================================
 
 # A) Confusion Matrices Comparison
 cm_data_bl <- eval_data |> filter(has_gt, baseline_pred %in% c("M", "K")) |>
@@ -278,11 +360,8 @@ p_metrics <- ggplot(metrics_long, aes(x = metric, y = value, fill = model)) +
 save_plot(p_metrics, "03_metrics_comparison", width = 8, height = 5)
 
 # =============================================================================
-# 6) Save tables
+# 7) Save tables
 # =============================================================================
-
-tables_dir <- here::here("01_gender_prediction_improvement", "output", "tables")
-dir.create(tables_dir, recursive = TRUE, showWarnings = FALSE)
 
 write_csv(metrics_comparison, file.path(tables_dir, "01_metrics_comparison.csv"))
 write_csv(coverage_analysis, file.path(tables_dir, "02_coverage_analysis.csv"))
