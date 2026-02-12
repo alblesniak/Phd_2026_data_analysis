@@ -23,7 +23,7 @@ library(DBI)
 library(bit64)
 
 # --- Database connection ---
-source(here::here("00_basic_corpus_statistics", "scripts", "db_connection.R"))
+source(here::here("shared", "database", "db_connection.R"))
 
 message("\n=== EKSTRAKCJA CECH PLCI GRAMATYCZNEJ (V2 - STABLE A-G) ===")
 message("Start: ", Sys.time())
