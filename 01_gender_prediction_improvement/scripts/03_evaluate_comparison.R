@@ -224,10 +224,15 @@ if (RUN_THRESHOLD_ANALYSIS) {
       y = "Wartość",
       color = "Metryka"
     ) +
-    theme_academic() +
+    theme_phd() +
     theme(legend.position = "bottom")
-  
-  save_plot(p_sens, "05_threshold_sensitivity", width = 8, height = 6)
+
+  save_plot_phd(
+    p_sens,
+    "05_threshold_sensitivity",
+    width_cm = 20,
+    height_cm = 15
+  )
   message("Zapisano wykres: 05_threshold_sensitivity.png")
 }
 
