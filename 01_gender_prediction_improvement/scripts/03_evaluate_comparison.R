@@ -18,8 +18,7 @@ library(here)
 library(DBI)
 library(purrr) # For map_dfr
 
-# --- Configuration ---
-RUN_THRESHOLD_ANALYSIS <-   FALSE  # Set to FALSE to skip the loop
+source(here::here("01_gender_prediction_improvement", "scripts", "config.R"))
 
 # --- Reuse shared helpers ---
 source(here::here("00_basic_corpus_statistics", "scripts", "00_setup_theme.R"))
@@ -150,15 +149,15 @@ write_csv(metrics_comparison, file.path(tables_dir, "01_metrics_comparison.csv")
 if (RUN_THRESHOLD_ANALYSIS) {
   message("\n--- ANALIZA WRAŻLIWOŚCI PROGU (Threshold Sensitivity) ---")
   
-  # Sequence from 0.1 to 0.9
-  thresholds <- seq(0.1, 0.9, by = 0.1)
+  thresholds <- THRESHOLD_GRID
+  min_scores <- MIN_SCORE_GRID
   
-  simulate_threshold <- function(th, df) {
-    # Logic matches 02_predict_gender.R but with dynamic threshold
+  simulate_threshold <- function(th, min_score, df) {
+    # Logic matches 02_predict_gender.R but with dynamic thresholds
     df_sim <- df |>
       mutate(
         sim_gender = case_when(
-          score_total == 0 ~ "unknown",
+          score_total < min_score ~ "unknown",
           confidence < th ~ "unknown",
           score_m > score_k ~ "M",
           score_k > score_m ~ "K",
@@ -177,14 +176,19 @@ if (RUN_THRESHOLD_ANALYSIS) {
     
     tibble(
       threshold = th,
+      min_score_total = min_score,
       accuracy_on_gt = accuracy,
       coverage_total = coverage_total,
       n_classified = n_classified_total
     )
   }
-  
-  message("Symulacja dla progów: ", paste(thresholds, collapse=", "))
-  sensitivity_results <- map_dfr(thresholds, ~ simulate_threshold(.x, eval_data))
+
+  message("Symulacja dla progów confidence: ", paste(thresholds, collapse=", "))
+  message("Symulacja dla progów score_total: ", paste(min_scores, collapse=", "))
+  sensitivity_results <- tidyr::crossing(threshold = thresholds, min_score_total = min_scores) |>
+    purrr::pmap_dfr(function(threshold, min_score_total) {
+      simulate_threshold(threshold, min_score_total, eval_data)
+    })
   
   # Print results
   print(sensitivity_results |> 
@@ -198,20 +202,23 @@ if (RUN_THRESHOLD_ANALYSIS) {
   dir.create(plot_dir, recursive = TRUE, showWarnings = FALSE)
   
   results_long <- sensitivity_results |>
-    pivot_longer(cols = c(accuracy_on_gt, coverage_total), 
+    group_by(min_score_total) |>
+    slice_max(order_by = accuracy_on_gt * coverage_total, n = 1, with_ties = FALSE) |>
+    ungroup() |>
+    pivot_longer(cols = c(accuracy_on_gt, coverage_total),
                  names_to = "metric", values_to = "value") |>
     mutate(metric_label = if_else(metric == "accuracy_on_gt", "Accuracy (na GT)", "Coverage (Cała baza)"))
-  
-  p_sens <- ggplot(results_long, aes(x = threshold, y = value, color = metric_label)) +
+
+  p_sens <- ggplot(results_long, aes(x = min_score_total, y = value, color = metric_label, group = metric_label)) +
     geom_line(linewidth = 1.2) +
     geom_point(size = 3) +
     scale_y_continuous(labels = percent_format(accuracy = 1), limits = c(0, 1)) +
-    scale_x_continuous(breaks = thresholds) +
+    scale_x_continuous(breaks = min_scores) +
     scale_color_manual(values = c("Accuracy (na GT)" = "#27AE60", "Coverage (Cała baza)" = "#E74C3C")) +
     labs(
       title = "Analiza wrażliwości progu (Threshold Sensitivity)",
-      subtitle = "Jak próg pewności wpływa na Jakość vs Ilość",
-      x = "Próg pewności (Threshold)",
+      subtitle = "Najlepszy confidence per minimalny score_total",
+      x = "Minimalny score_total",
       y = "Wartość",
       color = "Metryka"
     ) +
