@@ -18,7 +18,7 @@ FEATURE_WEIGHTS <- c(
 
 # Decision thresholds
 CONFIDENCE_THRESHOLD <- 0.50
-MIN_SCORE_TOTAL <- 5
+MIN_SCORE_TOTAL <- 1
 
 # Evaluation options
 RUN_THRESHOLD_ANALYSIS <- TRUE
