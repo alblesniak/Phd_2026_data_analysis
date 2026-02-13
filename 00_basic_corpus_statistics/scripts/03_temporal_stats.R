@@ -1,155 +1,69 @@
 # =============================================================================
-# 03_temporal_stats.R - Diachronic analysis of corpus
+# 03_temporal_stats.R - Diachronic analysis
 # =============================================================================
-# Depends on: 00_setup_theme.R, 01_fetch_data.R (run first)
-# Produces: temporal distribution plots (posts per year, per year+forum)
-# =============================================================================
-
 library(dplyr)
 library(ggplot2)
 library(scales)
-library(tidyr)
 
-# --- Source setup (if not already loaded) ---
 source(here::here("00_basic_corpus_statistics", "scripts", "00_setup_theme.R"))
 
-# --- Auto-load data if running independently ---
 if (!exists("posts_per_year")) {
-  message("Danych nie znaleziono w pamięci. Uruchamiam 01_fetch_data.R...")
   source(here::here("00_basic_corpus_statistics", "scripts", "01_fetch_data.R"))
 }
 
-# =============================================================================
-# 1) Summary: date range
-# =============================================================================
+# Filtrowanie (do 2025 włącznie, jak ustaliłeś)
+posts_year_clean <- posts_per_year |>
+  filter(rok >= 2003, rok <= 2025)
 
-message("\n=== ANALIZA CZASOWA ===")
-message("Najwcześniejszy post: ", corpus_min_date)
-message("Najpóźniejszy post:   ", corpus_max_date)
-message("Zakres:               ",
-        as.numeric(difftime(corpus_max_date, corpus_min_date, units = "days")),
-        " dni")
+posts_forum_clean <- posts_per_year_forum |>
+  filter(rok >= 2003, rok <= 2025)
 
-# =============================================================================
-# 2) Table: posts per year
-# =============================================================================
-
-# Filter out implausible years (before ~2000 or after current year)
-posts_per_year_clean <- posts_per_year |>
-  filter(rok >= 2000, rok <= as.integer(format(Sys.Date(), "%Y")))
-
-save_table(
-  posts_per_year_clean |> rename(Rok = rok, `Liczba postów` = n_posts),
-  "02_posty_wg_roku"
-)
-
-# =============================================================================
-# 3) Line chart: posts per year (aggregate)
-# =============================================================================
-
-p_temporal <- ggplot(posts_per_year_clean, aes(x = rok, y = n_posts)) +
-  geom_line(linewidth = 1, color = "#2C3E50") +
-  geom_point(size = 2.5, color = "#2C3E50") +
-  geom_text(
-    aes(label = format(n_posts, big.mark = " ")),
-    vjust = -1,
-    size  = 3,
-    color = "grey30"
-  ) +
-  scale_x_continuous(breaks = seq(
-    min(posts_per_year_clean$rok),
-    max(posts_per_year_clean$rok),
-    by = 2
-  )) +
-  scale_y_continuous(
-    labels = label_number(big.mark = " "),
-    expand = expansion(mult = c(0.05, 0.15))
-  ) +
+# 1. Wykres liniowy: Ogólny trend
+p_trend <- ggplot(posts_year_clean, aes(x = rok, y = n_posts)) +
+  geom_line(linewidth = 1.0, colour = "#2C3E50") +
+  geom_point(size = 2.2, colour = "#2C3E50") +
+  scale_x_continuous(breaks = pretty_breaks(n = 10)) +
+  scale_y_continuous(labels = fmt_pl_num, limits = c(0, NA), expand = expansion(mult = c(0, 0.05))) +
   labs(
-    title    = "Liczba postów w poszczególnych latach",
-    subtitle = paste0(
-      "Zakres czasowy korpusu: ", corpus_min_date, " - ", corpus_max_date
-    ),
-    x       = "Rok",
-    y       = "Liczba postów",
-    caption = "Źródło: baza danych forums_scraper"
+    title = "Dynamika liczby postów w czasie",
+    subtitle = "Ujęcie łączne dla całego korpusu",
+    x = "Rok",
+    y = "Liczba postów"
   ) +
-  theme_academic()
+  theme_phd()
 
-save_plot(p_temporal, "03_posty_wg_roku", width = 12, height = 6)
+save_plot_phd(p_trend, "03_posty_wg_roku")
 
-# =============================================================================
-# 4) Line chart: posts per year, broken down by forum
-# =============================================================================
-
-posts_per_year_forum_clean <- posts_per_year_forum |>
-  filter(rok >= 2000, rok <= as.integer(format(Sys.Date(), "%Y")))
-
-save_table(
-  posts_per_year_forum_clean |>
-    rename(Forum = forum, Rok = rok, `Liczba postów` = n_posts),
-  "03_posty_wg_roku_i_forum"
-)
-
-p_temporal_forum <- ggplot(
-  posts_per_year_forum_clean,
-  aes(x = rok, y = n_posts, color = forum)
-) +
+# 2. Wykres liniowy: Wg forum
+p_trend_forum <- ggplot(posts_forum_clean, aes(x = rok, y = n_posts, colour = forum)) +
   geom_line(linewidth = 0.9) +
-  geom_point(size = 2) +
-  scale_color_manual(values = forum_colors) +
-  scale_x_continuous(breaks = seq(
-    min(posts_per_year_forum_clean$rok),
-    max(posts_per_year_forum_clean$rok),
-    by = 2
-  )) +
-  scale_y_continuous(
-    labels = label_number(big.mark = " "),
-    expand = expansion(mult = c(0.05, 0.10))
-  ) +
+  geom_point(size = 2.0) +
+  scale_colour_manual(values = forum_colors) +
+  scale_x_continuous(breaks = pretty_breaks(n = 10)) +
+  scale_y_continuous(labels = fmt_pl_num) +
   labs(
-    title    = "Dynamika postów w poszczególnych latach wg forum",
-    subtitle = paste0(
-      "Zakres: ", corpus_min_date, " - ", corpus_max_date
-    ),
-    x       = "Rok",
-    y       = "Liczba postów",
-    color   = "Forum",
-    caption = "Źródło: baza danych forums_scraper"
+    title = "Aktywność na poszczególnych forach w czasie",
+    x = "Rok",
+    y = "Liczba postów"
   ) +
-  theme_academic()
+  theme_phd()
 
-save_plot(p_temporal_forum, "04_posty_wg_roku_forum", width = 12, height = 6)
+save_plot_phd(p_trend_forum, "04_posty_wg_roku_forum")
 
-# =============================================================================
-# 5) Stacked area chart: cumulative posts per year per forum
-# =============================================================================
-
-p_stacked <- ggplot(
-  posts_per_year_forum_clean,
-  aes(x = rok, y = n_posts, fill = forum)
-) +
-  geom_area(alpha = 0.8, color = "white", linewidth = 0.3) +
+# 3. Wykres warstwowy (Area chart)
+p_area <- ggplot(posts_forum_clean, aes(x = rok, y = n_posts, fill = forum)) +
+  geom_area(alpha = 0.8, colour = "white", linewidth = 0.3) +
   scale_fill_manual(values = forum_colors) +
-  scale_x_continuous(breaks = seq(
-    min(posts_per_year_forum_clean$rok),
-    max(posts_per_year_forum_clean$rok),
-    by = 2
-  )) +
-  scale_y_continuous(
-    labels = label_number(big.mark = " "),
-    expand = expansion(mult = c(0, 0.05))
-  ) +
+  scale_x_continuous(breaks = pretty_breaks(n = 10), expand = c(0,0)) +
+  scale_y_continuous(labels = fmt_pl_num, expand = expansion(mult = c(0, 0.05))) +
   labs(
-    title    = "Udział forów w produkcji postów w kolejnych latach",
-    subtitle = "Wykres warstwowy (area chart)",
-    x       = "Rok",
-    y       = "Liczba postów",
-    fill    = "Forum",
-    caption = "Źródło: baza danych forums_scraper"
+    title = "Udział forów w produkcji postów (wykres warstwowy)",
+    x = "Rok",
+    y = "Liczba postów"
   ) +
-  theme_academic()
+  theme_phd() +
+  theme(panel.grid.minor = element_blank())
 
-save_plot(p_stacked, "05_posty_area_chart", width = 12, height = 6)
+save_plot_phd(p_area, "05_posty_area_chart")
 
 message("03_temporal_stats.R completed.")

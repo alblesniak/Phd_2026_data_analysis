@@ -14,6 +14,22 @@
 # ===== Outputs and caches =====
 # Common folders for generated outputs (plots, tables, etc.)
 **/output/
+# Allow tracking specific plot outputs for the thesis repository.
+# Keep generic `output/` ignored but explicitly un-ignore the plots
+# produced by the `00_basic_corpus_statistics` pipeline so PNG/PDF
+# preview and final plots can be committed to GitHub.
+!00_basic_corpus_statistics/output/
+!00_basic_corpus_statistics/output/plots/
+!00_basic_corpus_statistics/output/plots/*.png
+!00_basic_corpus_statistics/output/plots/*.pdf
+# Also allow tracking outputs from the gender-prediction pipeline
+!01_gender_prediction_improvement/output/
+!01_gender_prediction_improvement/output/data/
+!01_gender_prediction_improvement/output/data/*.csv
+!01_gender_prediction_improvement/output/data/*.xlsx
+!01_gender_prediction_improvement/output/*.csv
+!01_gender_prediction_improvement/output/tables/
+!01_gender_prediction_improvement/output/tables/*.csv
 # knitr/cache and pandoc/latex intermediate files
 *_cache/
 *.utf8.md

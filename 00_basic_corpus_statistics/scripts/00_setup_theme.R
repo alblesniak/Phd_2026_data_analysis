@@ -1,180 +1,142 @@
 # =============================================================================
-# 00_setup_theme.R - Custom ggplot2 theme for academic publications
+# 00_setup_theme.R - Academic Theme for PhD Thesis (LaTeX/Overleaf)
 # =============================================================================
-# Defines a clean, minimal theme suitable for PhD thesis printing.
-# All output labels are in Polish.
+# System wizualny "PhD-Modern" — zoptymalizowany pod skład w LaTeX.
+# Konwencja: tytuły i opisy umieszczane w \caption{} w LaTeX,
+# dlatego eksport PDF automatycznie usuwa tytuł, podtytuł i adnotację.
 # =============================================================================
 
 library(ggplot2)
+library(dplyr)
+library(scales)
+library(grid)
 
-# --- Color palette for the four forums ---
+# Renderowanie czcionek przez showtext (umożliwia użycie LMR/CMR)
+library(showtext)
+showtext_auto()
+showtext_opts(dpi = 300)
+
+# Use the default system serif font family available in R for reproducible plots.
+# Avoid registering local OTFs or forcing LaTeX-specific fonts; plots will use
+# the standard `serif` family which is portable across environments.
+phd_font_family <- "serif"
+message("Font for plots: ", phd_font_family)
+# --- 1. Paleta "Academic Slate" ---
+# Kolory o zróżnicowanej luminancji — czytelne również w druku czarno-białym.
 forum_colors <- c(
-  "Z Chrystusem"    = "#2C3E50",
-  "radiokatolik.pl" = "#E74C3C",
-  "Dolina Modlitwy" = "#27AE60",
-  "wiara.pl"        = "#2980B9"
+  "Z Chrystusem"    = "#2C3E50",  # Głęboki granat
+  "radiokatolik.pl" = "#A93226",  # Ceglana czerwień
+  "Dolina Modlitwy" = "#1E8449",  # Ciemna zieleń
+  "wiara.pl"        = "#2E86C1"   # Stalowy niebieski
 )
 
-# --- Custom academic theme ---
-theme_academic <- function(base_size = 12, base_family = "") {
+gender_colors <- c(
+  "Mężczyzna"       = "#2E86C1",
+  "Kobieta"         = "#A93226",
+  "Nieokreślona"    = "#7F8C8D",
+  "Brak danych"     = "#BDC3C7"
+)
+
+# --- 2. Motyw graficzny (PhD-Modern) ---
+# Zoptymalizowany pod skład w LaTeX/Overleaf.
+# Konwencja: tytuły i opisy w \caption{}, PDF eksportowany bez nich.
+theme_phd <- function(base_size = 11, base_family = phd_font_family) {
   theme_minimal(base_size = base_size, base_family = base_family) %+replace%
     theme(
-      # Text elements
-      plot.title       = element_text(size = rel(1.3), face = "bold",
-                                      hjust = 0, margin = margin(b = 10)),
-      plot.subtitle    = element_text(size = rel(1.0), hjust = 0,
-                                      color = "grey30",
-                                      margin = margin(b = 12)),
-      plot.caption     = element_text(size = rel(0.8), hjust = 1,
-                                      color = "grey50",
-                                      margin = margin(t = 10)),
-      # Axes
-      axis.title       = element_text(size = rel(1.0), face = "bold"),
-      axis.title.x     = element_text(margin = margin(t = 8)),
-      axis.title.y     = element_text(margin = margin(r = 8)),
-      axis.text        = element_text(size = rel(0.9), color = "grey20"),
-      axis.line        = element_line(color = "grey40", linewidth = 0.4),
-      axis.ticks       = element_line(color = "grey40", linewidth = 0.3),
-      # Grid
-      panel.grid.major = element_line(color = "grey90", linewidth = 0.3),
+      # Tytuły (widoczne w PNG; PDF je usuwa — por. save_plot_phd)
+      plot.title       = element_text(size = rel(1.15), face = "bold",
+                                      hjust = 0, margin = margin(b = 8)),
+      plot.subtitle    = element_text(size = rel(0.85), colour = "grey30",
+                                      hjust = 0, margin = margin(b = 12)),
+      plot.caption     = element_text(size = rel(0.75), colour = "grey50",
+                                      hjust = 1, margin = margin(t = 8)),
+
+      # Osie — bez bolda w tytułach (mniej dominujące)
+      axis.title       = element_text(size = rel(0.95)),
+      axis.title.y     = element_text(margin = margin(r = 12), angle = 90),
+      axis.title.x     = element_text(margin = margin(t = 12)),
+
+      # Etykiety osi
+      axis.text        = element_text(size = rel(0.85), colour = "grey15"),
+      axis.text.x      = element_text(margin = margin(t = 4)),
+      axis.text.y      = element_text(margin = margin(r = 4), hjust = 1),
+
+      # Linie i kreski osi — delikatny grafit zamiast czystej czerni
+      axis.line        = element_line(colour = "grey25", linewidth = 0.4),
+      axis.ticks       = element_line(colour = "grey25", linewidth = 0.35),
+      axis.ticks.length = unit(3, "pt"),
+
+      # Siatka — bardzo subtelna
+      panel.grid.major = element_line(colour = "grey92", linewidth = 0.25),
       panel.grid.minor = element_blank(),
-      # Legend
+      panel.border     = element_blank(),
+      panel.spacing    = unit(1.2, "lines"),
+
+      # Legenda — większe klucze, lepsze odstępy
       legend.position  = "bottom",
-      legend.title     = element_text(size = rel(0.9), face = "bold"),
-      legend.text      = element_text(size = rel(0.85)),
-      legend.key.size  = unit(0.9, "lines"),
-      # Facets
-      strip.text       = element_text(size = rel(1.0), face = "bold",
-                                      margin = margin(b = 5, t = 5)),
-      strip.background = element_rect(fill = "grey95", color = NA),
-      # Plot margins
+      legend.title     = element_blank(),
+      legend.text      = element_text(size = rel(0.88)),
+      legend.key.size  = unit(1.1, "lines"),
+      legend.key.width = unit(1.6, "lines"),
+      legend.margin    = margin(t = 6),
+      legend.box.margin = margin(t = 0),
+
+      # Marginesy wykresu — więcej „oddechu"
       plot.margin      = margin(15, 15, 15, 15)
     )
 }
 
-# --- Helper: save publication-quality plot ---
-save_plot <- function(plot, filename, width = 10, height = 6, dpi = 300) {
+# --- 3. Zapis PDF + PNG ---
+save_plot_phd <- function(plot, filename,
+                          width_cm = 16, height_cm = 10,
+                          dpi = 300) {
   plots_dir <- here::here("00_basic_corpus_statistics", "output", "plots")
   dir.create(plots_dir, recursive = TRUE, showWarnings = FALSE)
-  # Save PNG: prefer ragg::agg_png for consistent raster output if available
-  png_path <- file.path(plots_dir, paste0(filename, ".png"))
-  if (requireNamespace("ragg", quietly = TRUE)) {
-    ggsave(
-      filename = png_path,
-      plot = plot,
-      width = width,
-      height = height,
-      dpi = dpi,
-      device = ragg::agg_png
-    )
-  } else {
-    ggsave(
-      filename = png_path,
-      plot = plot,
-      width = width,
-      height = height,
-      dpi = dpi,
-      bg = "white"
-    )
-  }
 
-  # Save PDF: prefer ragg::agg_pdf if available (no XQuartz dependency).
+  # PDF (do LaTeXa) — bez tytułu/podtytułu (trafi do \caption{})
+  clean_plot <- plot +
+    labs(title = NULL, subtitle = NULL, caption = NULL)
+
   pdf_path <- file.path(plots_dir, paste0(filename, ".pdf"))
-  if (requireNamespace("ragg", quietly = TRUE) && "agg_pdf" %in% getNamespaceExports("ragg")) {
-    ggsave(
-      filename = pdf_path,
-      plot = plot,
-      width = width,
-      height = height,
-      device = ragg::agg_pdf
-    )
-  } else if (requireNamespace("ragg", quietly = TRUE) && !("agg_pdf" %in% getNamespaceExports("ragg"))) {
-    # Older ragg versions may not export agg_pdf; use cairo if available, else base pdf
-    if (capabilities("cairo")) {
-      suppressWarnings(tryCatch(
-        ggsave(
-          filename = pdf_path,
-          plot = plot,
-          width = width,
-          height = height,
-          device = cairo_pdf
-        ),
-        error = function(e) {
-          warning("cairo PDF failed (", conditionMessage(e), ") — falling back to base PDF device")
-          ggsave(
-            filename = pdf_path,
-            plot = plot,
-            width = width,
-            height = height,
-            device = "pdf"
-          )
-        }
-      ))
-    } else {
-      ggsave(
-        filename = pdf_path,
-        plot = plot,
-        width = width,
-        height = height,
-        device = "pdf"
-      )
-    }
+  if (capabilities("cairo")) {
+    ggsave(pdf_path, clean_plot,
+           width = width_cm, height = height_cm, units = "cm",
+           device = cairo_pdf)
   } else {
-    # No ragg: prefer cairo if system supports it; suppress cairo warning and fall back to base pdf on error
-    if (capabilities("cairo")) {
-      suppressWarnings(tryCatch(
-        ggsave(
-          filename = pdf_path,
-          plot = plot,
-          width = width,
-          height = height,
-          device = cairo_pdf
-        ),
-        error = function(e) {
-          warning("cairo PDF failed (", conditionMessage(e), ") — falling back to base PDF device")
-          ggsave(
-            filename = pdf_path,
-            plot = plot,
-            width = width,
-            height = height,
-            device = "pdf"
-          )
-        }
-      ))
-    } else {
-      ggsave(
-        filename = pdf_path,
-        plot = plot,
-        width = width,
-        height = height,
-        device = "pdf"
-      )
-    }
+    ggsave(pdf_path, clean_plot,
+           width = width_cm, height = height_cm, units = "cm",
+           device = "pdf")
   }
 
-  message("Saved: ", filename, " (.png + .pdf)")
+  # PNG (podgląd) — z tytułami, białe tło
+  png_path <- file.path(plots_dir, paste0(filename, ".png"))
+  ggsave(png_path, plot,
+         width = width_cm, height = height_cm, units = "cm",
+         dpi = dpi, bg = "white")
+
+  message("  \u2713 ", filename, " (.pdf + .png)")
 }
 
-# --- Helper: save table to CSV and Excel ---
+# --- 4. Formatery ---
 save_table <- function(df, filename) {
   tables_dir <- here::here("00_basic_corpus_statistics", "output", "tables")
   dir.create(tables_dir, recursive = TRUE, showWarnings = FALSE)
 
-  # Convert integer64 columns (from DB drivers) to numeric to avoid
-  # automatic coercion warnings when writing with writexl/readr.
   if (any(vapply(df, function(col) inherits(col, "integer64"), logical(1)))) {
-    df <- df |> dplyr::mutate(dplyr::across(dplyr::where(~ inherits(.x, "integer64")), as.numeric))
+    df <- df |>
+      dplyr::mutate(dplyr::across(
+        dplyr::where(~ inherits(.x, "integer64")), as.numeric
+      ))
   }
 
   readr::write_csv(df, file.path(tables_dir, paste0(filename, ".csv")))
   writexl::write_xlsx(df, file.path(tables_dir, paste0(filename, ".xlsx")))
-
-  message("Saved: ", filename, " (.csv + .xlsx)")
+  message("  \u2713 table: ", filename)
 }
 
-# --- Polish number formatting helper ---
-fmt_number <- function(x) {
-  format(x, big.mark = " ", scientific = FALSE)
+# Separator tysięcy — spacja (polska typografia)
+fmt_pl_num <- function(x) {
+  format(x, big.mark = " ", scientific = FALSE, trim = TRUE)
 }
 
-message("Theme and helpers loaded.")
+message("Theme loaded: PhD-Modern (serif, Academic Slate palette)")

@@ -6,6 +6,8 @@
 # =============================================================================
 
 library(glue)
+library(dplyr)
+library(scales)
 
 # --- Source setup (if not already loaded) ---
 source(here::here("00_basic_corpus_statistics", "scripts", "00_setup_theme.R"))
@@ -17,24 +19,56 @@ source(here::here("00_basic_corpus_statistics", "scripts", "00_setup_theme.R"))
 # Forum summary table in markdown
 forum_md_rows <- forum_summary |>
   mutate(row = glue(
-    "| {forum} | {fmt_number(n_posts)} | {fmt_number(n_threads)} | ",
-    "{fmt_number(n_users)} | {fmt_number(n_tokens)} | {procent_postow}% | ",
+    "| {forum} | {fmt_pl_num(n_posts)} | {fmt_pl_num(n_threads)} | ",
+    "{fmt_pl_num(n_users)} | {fmt_pl_num(n_tokens)} | {procent_postow}% | ",
     "{procent_tokenow}% |"
   )) |>
   pull(row) |>
   paste(collapse = "\n")
 
 totals_row <- glue(
-  "| **RAZEM** | **{fmt_number(total_posts)}** | **{fmt_number(total_threads)}** | ",
-  "**{fmt_number(total_users)}** | **{fmt_number(total_tokens)}** | **100%** | **100%** |"
+  "| **RAZEM** | **{fmt_pl_num(total_posts)}** | **{fmt_pl_num(total_threads)}** | ",
+  "**{fmt_pl_num(total_users)}** | **{fmt_pl_num(total_tokens)}** | **100%** | **100%** |"
 )
 
 # Posts per year table
 posts_year_md <- posts_per_year |>
-  filter(rok >= 2000, rok <= as.integer(format(Sys.Date(), "%Y"))) |>
-  mutate(row = glue("| {rok} | {fmt_number(n_posts)} |")) |>
+  filter(rok >= 2003, rok <= 2025) |>
+  mutate(row = glue("| {rok} | {fmt_pl_num(n_posts)} |")) |>
   pull(row) |>
   paste(collapse = "\n")
+
+# --- Activity summaries (computed here to avoid cross-script coupling) ---
+top_1_pct_n <- ceiling(nrow(user_ranked) * 0.01)
+top_1_pct_posts <- user_ranked |>
+  slice_head(n = top_1_pct_n) |>
+  pull(n_posts) |>
+  sum()
+total_posts_active <- sum(user_ranked$n_posts)
+top_1_pct_share <- round(top_1_pct_posts / total_posts_active * 100, 1)
+
+top_10_pct_n <- ceiling(nrow(user_ranked) * 0.10)
+top_10_pct_posts <- user_ranked |>
+  slice_head(n = top_10_pct_n) |>
+  pull(n_posts) |>
+  sum()
+top_10_pct_share <- round(top_10_pct_posts / total_posts_active * 100, 1)
+
+activity_quantiles <- tibble(
+  Kwantyl = c("Min", "Q1 (25%)", "Mediana", "Średnia",
+             "Q3 (75%)", "P90", "P95", "P99", "Max"),
+  `Liczba postów` = c(
+    min(user_ranked$n_posts),
+    quantile(user_ranked$n_posts, 0.25),
+    median(user_ranked$n_posts),
+    round(mean(user_ranked$n_posts), 1),
+    quantile(user_ranked$n_posts, 0.75),
+    quantile(user_ranked$n_posts, 0.90),
+    quantile(user_ranked$n_posts, 0.95),
+    quantile(user_ranked$n_posts, 0.99),
+    max(user_ranked$n_posts)
+  )
+)
 
 # Activity quantiles
 activity_md <- activity_quantiles |>
@@ -43,14 +77,8 @@ activity_md <- activity_quantiles |>
   paste(collapse = "\n")
 
 # Gender declared
-gender_decl_md <- gender_declared |>
-  mutate(row = glue("| {plec_label} | {fmt_number(n_users)} | {procent}% |")) |>
-  pull(row) |>
-  paste(collapse = "\n")
-
-# Gender predicted
-gender_pred_md <- gender_predicted |>
-  mutate(row = glue("| {plec_label} | {fmt_number(n_users)} | {procent}% |")) |>
+gender_decl_md <- gender_clean |>
+  mutate(row = glue("| {plec} | {fmt_pl_num(n)} | {percent(pct, 0.1)} |")) |>
   pull(row) |>
   paste(collapse = "\n")
 
@@ -68,9 +96,9 @@ report <- glue("
 ## 1. Informacje ogólne
 
 Korpus składa się z danych zebranych z **{total_forums} forów internetowych** o tematyce religijnej.
-Łącznie baza zawiera **{fmt_number(total_posts)} postów**, **{fmt_number(total_tokens)} tokenów**
-(po analizie morfologicznej LPMN), **{fmt_number(total_threads)} wątków** oraz
-**{fmt_number(total_users)} użytkowników**.
+Łącznie baza zawiera **{fmt_pl_num(total_posts)} postów**, **{fmt_pl_num(total_tokens)} tokenów**
+(po analizie morfologicznej LPMN), **{fmt_pl_num(total_threads)} wątków** oraz
+**{fmt_pl_num(total_users)} użytkowników**.
 
 ### 1.1 Podsumowanie korpusu wg forum
 
@@ -118,8 +146,8 @@ Zakres czasowy korpusu: **{corpus_min_date}** -- **{corpus_max_date}**.
 ### 3.1 Rozkład aktywności (prawo Zipfa)
 
 Aktywność użytkowników wykazuje typowy rozkład potęgowy (prawo Zipfa):
-- **Top 1%** użytkowników ({fmt_number(top_1_pct_n)}) napisało **{top_1_pct_share}%** wszystkich postów.
-- **Top 10%** użytkowników ({fmt_number(top_10_pct_n)}) napisało **{top_10_pct_share}%** wszystkich postów.
+- **Top 1%** użytkowników ({fmt_pl_num(top_1_pct_n)}) napisało **{top_1_pct_share}%** wszystkich postów.
+- **Top 10%** użytkowników ({fmt_pl_num(top_10_pct_n)}) napisało **{top_10_pct_share}%** wszystkich postów.
 
 #### Kwantyle aktywności (posty na użytkownika)
 
@@ -144,14 +172,6 @@ Aktywność użytkowników wykazuje typowy rozkład potęgowy (prawo Zipfa):
 {gender_decl_md}
 
 ![Płeć deklarowana](output/plots/08_plec_deklarowana.png)
-
-#### Płeć predykowana (pole `users.pred_gender`)
-
-| Płeć | Liczba | % |
-|---|---:|---:|
-{gender_pred_md}
-
-![Płeć predykowana](output/plots/09_plec_predykowana.png)
 
 #### Struktura płci wg forum
 
