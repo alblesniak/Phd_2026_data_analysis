@@ -43,7 +43,7 @@ save_plot_phd(p_zipf, "06_zipf_aktywnosc")
 # 2. Histogram (użytkownicy < 100 postów)
 p_hist <- ggplot(user_ranked |> filter(n_posts <= 100), aes(x = n_posts)) +
   geom_histogram(binwidth = 5, fill = "#2C3E50", colour = "white", linewidth = 0.3) +
-  scale_y_continuous(labels = fmt_pl_num, expand = expansion(mult = c(0, 0.1))) +
+  scale_y_continuous(labels = fmt_number, expand = expansion(mult = c(0, 0.1))) +
   scale_x_continuous(breaks = seq(0, 100, 10)) +
   labs(
     title = "Rozkład liczby postów (ogon rozkładu)",
@@ -67,7 +67,7 @@ gender_clean <- gender_distribution |>
 
 p_gender <- ggplot(gender_clean, aes(x = reorder(plec, n), y = n, fill = plec)) +
   geom_col(width = 0.7, show.legend = FALSE) +
-  geom_text(aes(label = paste0(fmt_pl_num(n), " (", percent(pct, 0.1), ")")),
+  geom_text(aes(label = paste0(fmt_number(n), " (", percent(pct, 0.1), ")")),
             hjust = -0.1, size = 3.2, family = phd_font_family) +
   scale_fill_manual(values = gender_colors) +
   scale_y_continuous(expand = expansion(mult = c(0, 0.25))) +

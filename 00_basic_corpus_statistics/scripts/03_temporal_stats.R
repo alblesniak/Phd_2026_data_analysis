@@ -23,7 +23,7 @@ p_trend <- ggplot(posts_year_clean, aes(x = rok, y = n_posts)) +
   geom_line(linewidth = 1.0, colour = "#2C3E50") +
   geom_point(size = 2.2, colour = "#2C3E50") +
   scale_x_continuous(breaks = pretty_breaks(n = 10)) +
-  scale_y_continuous(labels = fmt_pl_num, limits = c(0, NA), expand = expansion(mult = c(0, 0.05))) +
+  scale_y_continuous(labels = fmt_number, limits = c(0, NA), expand = expansion(mult = c(0, 0.05))) +
   labs(
     title = "Dynamika liczby postów w czasie",
     subtitle = "Ujęcie łączne dla całego korpusu",
@@ -40,7 +40,7 @@ p_trend_forum <- ggplot(posts_forum_clean, aes(x = rok, y = n_posts, colour = fo
   geom_point(size = 2.0) +
   scale_colour_manual(values = forum_colors) +
   scale_x_continuous(breaks = pretty_breaks(n = 10)) +
-  scale_y_continuous(labels = fmt_pl_num) +
+  scale_y_continuous(labels = fmt_number) +
   labs(
     title = "Aktywność na poszczególnych forach w czasie",
     x = "Rok",
@@ -55,7 +55,7 @@ p_area <- ggplot(posts_forum_clean, aes(x = rok, y = n_posts, fill = forum)) +
   geom_area(alpha = 0.8, colour = "white", linewidth = 0.3) +
   scale_fill_manual(values = forum_colors) +
   scale_x_continuous(breaks = pretty_breaks(n = 10), expand = c(0,0)) +
-  scale_y_continuous(labels = fmt_pl_num, expand = expansion(mult = c(0, 0.05))) +
+  scale_y_continuous(labels = fmt_number, expand = expansion(mult = c(0, 0.05))) +
   labs(
     title = "Udział forów w produkcji postów (wykres warstwowy)",
     x = "Rok",

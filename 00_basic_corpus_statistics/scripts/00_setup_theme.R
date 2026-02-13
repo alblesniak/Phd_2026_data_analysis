@@ -98,15 +98,10 @@ save_plot_phd <- function(plot, filename,
     labs(title = NULL, subtitle = NULL, caption = NULL)
 
   pdf_path <- file.path(plots_dir, paste0(filename, ".pdf"))
-  if (capabilities("cairo")) {
-    ggsave(pdf_path, clean_plot,
-           width = width_cm, height = height_cm, units = "cm",
-           device = cairo_pdf)
-  } else {
-    ggsave(pdf_path, clean_plot,
-           width = width_cm, height = height_cm, units = "cm",
-           device = "pdf")
-  }
+  pdf_device <- if (capabilities("cairo")) cairo_pdf else "pdf"
+  ggsave(pdf_path, clean_plot,
+         width = width_cm, height = height_cm, units = "cm",
+         device = pdf_device)
 
   # PNG (podgląd) — z tytułami, białe tło
   png_path <- file.path(plots_dir, paste0(filename, ".png"))
@@ -135,7 +130,7 @@ save_table <- function(df, filename) {
 }
 
 # Separator tysięcy — spacja (polska typografia)
-fmt_pl_num <- function(x) {
+fmt_number <- function(x) {
   format(x, big.mark = " ", scientific = FALSE, trim = TRUE)
 }
 

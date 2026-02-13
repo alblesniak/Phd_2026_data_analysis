@@ -19,22 +19,22 @@ source(here::here("00_basic_corpus_statistics", "scripts", "00_setup_theme.R"))
 # Forum summary table in markdown
 forum_md_rows <- forum_summary |>
   mutate(row = glue(
-    "| {forum} | {fmt_pl_num(n_posts)} | {fmt_pl_num(n_threads)} | ",
-    "{fmt_pl_num(n_users)} | {fmt_pl_num(n_tokens)} | {procent_postow}% | ",
+    "| {forum} | {fmt_number(n_posts)} | {fmt_number(n_threads)} | ",
+    "{fmt_number(n_users)} | {fmt_number(n_tokens)} | {procent_postow}% | ",
     "{procent_tokenow}% |"
   )) |>
   pull(row) |>
   paste(collapse = "\n")
 
 totals_row <- glue(
-  "| **RAZEM** | **{fmt_pl_num(total_posts)}** | **{fmt_pl_num(total_threads)}** | ",
-  "**{fmt_pl_num(total_users)}** | **{fmt_pl_num(total_tokens)}** | **100%** | **100%** |"
+  "| **RAZEM** | **{fmt_number(total_posts)}** | **{fmt_number(total_threads)}** | ",
+  "**{fmt_number(total_users)}** | **{fmt_number(total_tokens)}** | **100%** | **100%** |"
 )
 
 # Posts per year table
 posts_year_md <- posts_per_year |>
   filter(rok >= 2003, rok <= 2025) |>
-  mutate(row = glue("| {rok} | {fmt_pl_num(n_posts)} |")) |>
+  mutate(row = glue("| {rok} | {fmt_number(n_posts)} |")) |>
   pull(row) |>
   paste(collapse = "\n")
 
@@ -78,7 +78,7 @@ activity_md <- activity_quantiles |>
 
 # Gender declared
 gender_decl_md <- gender_clean |>
-  mutate(row = glue("| {plec} | {fmt_pl_num(n)} | {percent(pct, 0.1)} |")) |>
+  mutate(row = glue("| {plec} | {fmt_number(n)} | {percent(pct, 0.1)} |")) |>
   pull(row) |>
   paste(collapse = "\n")
 
@@ -96,9 +96,9 @@ report <- glue("
 ## 1. Informacje ogólne
 
 Korpus składa się z danych zebranych z **{total_forums} forów internetowych** o tematyce religijnej.
-Łącznie baza zawiera **{fmt_pl_num(total_posts)} postów**, **{fmt_pl_num(total_tokens)} tokenów**
-(po analizie morfologicznej LPMN), **{fmt_pl_num(total_threads)} wątków** oraz
-**{fmt_pl_num(total_users)} użytkowników**.
+Łącznie baza zawiera **{fmt_number(total_posts)} postów**, **{fmt_number(total_tokens)} tokenów**
+(po analizie morfologicznej LPMN), **{fmt_number(total_threads)} wątków** oraz
+**{fmt_number(total_users)} użytkowników**.
 
 ### 1.1 Podsumowanie korpusu wg forum
 
@@ -146,8 +146,8 @@ Zakres czasowy korpusu: **{corpus_min_date}** -- **{corpus_max_date}**.
 ### 3.1 Rozkład aktywności (prawo Zipfa)
 
 Aktywność użytkowników wykazuje typowy rozkład potęgowy (prawo Zipfa):
-- **Top 1%** użytkowników ({fmt_pl_num(top_1_pct_n)}) napisało **{top_1_pct_share}%** wszystkich postów.
-- **Top 10%** użytkowników ({fmt_pl_num(top_10_pct_n)}) napisało **{top_10_pct_share}%** wszystkich postów.
+- **Top 1%** użytkowników ({fmt_number(top_1_pct_n)}) napisało **{top_1_pct_share}%** wszystkich postów.
+- **Top 10%** użytkowników ({fmt_number(top_10_pct_n)}) napisało **{top_10_pct_share}%** wszystkich postów.
 
 #### Kwantyle aktywności (posty na użytkownika)
 
