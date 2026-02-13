@@ -124,11 +124,13 @@ Po cleanup sprawdź:
 ```r
 source("database/db_connection.R")
 
-# Czy są posty po cutoff? (powinno być 0)
-dbGetQuery(con, "SELECT COUNT(*) FROM posts WHERE post_date > '2025-12-31 23:59:59'")
+with_db({
+  # Czy są posty po cutoff? (powinno być 0)
+  dbGetQuery(con, "SELECT COUNT(*) FROM posts WHERE post_date > '2025-12-31 23:59:59'")
 
-# Zakres dat w bazie
-dbGetQuery(con, "SELECT MIN(post_date) as min, MAX(post_date) as max FROM posts WHERE post_date IS NOT NULL")
+  # Zakres dat w bazie
+  dbGetQuery(con, "SELECT MIN(post_date) as min, MAX(post_date) as max FROM posts WHERE post_date IS NOT NULL")
+})
 ```
 
 ### 5. Przelicz statystyki

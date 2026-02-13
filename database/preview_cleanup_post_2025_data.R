@@ -20,6 +20,8 @@ CUTOFF_DATE <- "2025-12-31 23:59:59"
 # --- Connect to database ---
 source(here::here("database/db_connection.R"))
 
+with_db({
+
 cat("\n")
 cat("=============================================================================\n")
 cat("PODGLĄD CLEANUP: Analiza danych po 31 grudnia 2025 (BEZ USUWANIA!)\n")
@@ -303,5 +305,4 @@ cat("Aby wykonać cleanup, uruchom:\n")
 cat("  Rscript database/cleanup_post_2025_data.R\n")
 cat("=============================================================================\n\n")
 
-# --- Disconnect ---
-dbDisconnect(con)
+})

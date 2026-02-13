@@ -20,10 +20,11 @@ library(dplyr)
 library(readr)
 library(here)
 library(DBI)
-library(bit64)
 
 # --- Database connection ---
 source(here::here("database", "db_connection.R"))
+
+with_db({
 
 message("\n=== EKSTRAKCJA CECH PŁCI GRAMATYCZNEJ (V2 - STABLE A-G) ===")
 message("Start: ", Sys.time())
@@ -244,7 +245,5 @@ write_csv(features_combined, output_path)
 
 message("Zapisano: ", output_path)
 
-# Clean up
-dbDisconnect(con)
-message("Połączenie z bazą zamknięte.")
 message("01_extract_gender_features.R zakończone: ", Sys.time())
+})

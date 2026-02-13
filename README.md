@@ -15,6 +15,10 @@ Wszystkie skrypty, które wymagają połączenia z PostgreSQL, powinny ładować
 
 ```r
 source(here::here("database", "db_connection.R"))
+
+with_db({
+  dane <- DBI::dbGetQuery(con, "SELECT 1")
+})
 ```
 
-Dzięki temu logika połączenia jest utrzymywana w jednym miejscu i łatwo skalowalna dla kolejnych modułów (`03_*`, `04_*`, itd.).
+Dzięki temu logika połączenia jest utrzymywana w jednym miejscu, a połączenie jest zamykane automatycznie (również przy błędzie).

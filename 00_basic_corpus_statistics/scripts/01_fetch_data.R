@@ -9,8 +9,10 @@ library(readr)
 library(here)
 
 # --- 1) Setup Database Connection ---
-# This script loads libs (DBI, RPostgres), .env, and creates 'con' object
+# This script loads DB helpers and runs all queries inside with_db().
 source(here::here("database", "db_connection.R"))
+
+with_db({
 
 # =============================================================================
 # 2) General counts
@@ -175,9 +177,4 @@ gender_distribution <- dbGetQuery(con, "SELECT
 
 message("Gender distribution fetched.")
 
-# =============================================================================
-# Disconnect
-# =============================================================================
-
-dbDisconnect(con)
-message("Database connection closed. All data fetched successfully.")
+})

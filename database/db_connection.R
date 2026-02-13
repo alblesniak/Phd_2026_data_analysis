@@ -2,7 +2,7 @@
 # database/db_connection.R - Centralized Database Connection
 # =============================================================================
 # Handles loading environment variables and establishing connection to PostgreSQL.
-# Creates a 'con' object in the environment.
+# Exposes explicit connection helpers (no side effects on source()).
 # =============================================================================
 
 library(DBI)
@@ -49,6 +49,18 @@ connect_db <- function() {
   )
 }
 
-# Establish connection immediately when sourced
-con <- connect_db()
-message("Connected to database: ", get_env_first(c("DB_NAME", "POSTGRES_DB", "PGDATABASE")))
+# --- Safe wrapper: opens and always closes DB connection ---
+with_db <- function(code) {
+  con <- connect_db()
+  message("Connected to database: ", get_env_first(c("DB_NAME", "POSTGRES_DB", "PGDATABASE")))
+
+  on.exit({
+    if (DBI::dbIsValid(con)) {
+      DBI::dbDisconnect(con)
+      message("Połączenie z bazą zamknięte.")
+    }
+  }, add = TRUE)
+
+  eval_env <- list2env(list(con = con), parent = parent.frame())
+  eval(substitute(code), envir = eval_env)
+}

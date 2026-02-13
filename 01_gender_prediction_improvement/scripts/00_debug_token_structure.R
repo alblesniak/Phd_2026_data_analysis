@@ -12,6 +12,8 @@ library(DBI)
 # --- Database connection ---
 source(here::here("database", "db_connection.R"))
 
+with_db({
+
 message("\n=== DEBUG: STRUKTURA TOKENOW W BAZIE ===")
 message("Start: ", Sys.time())
 
@@ -197,10 +199,5 @@ stats <- dbGetQuery(con, "
 ")
 print(stats)
 
-# =============================================================================
-# Clean up
-# =============================================================================
-
-dbDisconnect(con)
-message("\nPolaczenie z baza zamkniete.")
 message("00_debug_token_structure.R zakonczone: ", Sys.time())
+})
