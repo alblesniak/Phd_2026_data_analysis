@@ -1,46 +1,15 @@
 # =============================================================================
 # 02_predict_gender.R - Weighted voting algorithm for gender prediction
 # =============================================================================
-# Loads feature counts from Step 1 and applies a weighted scoring system.
-#
-# Weights rationale:
-#   - Feature A (past tense 1sg): Weight 1.0 (Unambiguous)
-#   - Feature B (predicate): Weight 0.8 (POS tagging noise risk)
-#   - Feature C (passive): Weight 0.8 (POS tagging noise risk)
-#   - Feature D (winien): Weight 1.0 (Strong marker: powinienem/powinnam)
-#   - Feature E (future): Weight 1.0 (Strong marker: będę robił/robiła)
-#   - Feature F (conditional): Weight 1.0 (Strong marker: zrobiłbym/zrobiłabym)
-#   - Feature G (verba sentiendi): Weight 0.8 (Czuję się + adj/ppas)
-#
-# Output: output/data/new_gender_predictions.csv
-# =============================================================================
 
 library(dplyr)
 library(readr)
 library(here)
 
+source(here::here("01_gender_prediction_improvement", "scripts", "config.R"))
+
 message("\n=== PREDYKCJA PŁCI GRAMATYCZNEJ (algorytm głosowania) ===")
 message("Start: ", Sys.time())
-
-# =============================================================================
-# Configuration
-# =============================================================================
-
-# Feature weights
-WEIGHT_A <- 1.0   # Past tense verbs (praet + aglt)
-WEIGHT_B <- 0.8   # Adjectival predicate (jestem + adj)
-WEIGHT_C <- 0.8   # Passive voice
-WEIGHT_D <- 1.0   # Winien forms (powinienem)
-WEIGHT_E <- 1.0   # Future compound (będę robił)
-WEIGHT_F <- 1.0   # Conditional (zrobiłbym)
-WEIGHT_G <- 0.8   # Verba sentiendi (czuję się)
-
-# Thresholds
-CONFIDENCE_THRESHOLD <- 0.50  # Require > 50% of weighted evidence for one side
-
-# =============================================================================
-# 1) Load features
-# =============================================================================
 
 features_path <- here::here("01_gender_prediction_improvement", "output", "data", "user_gender_features.csv")
 
@@ -51,50 +20,47 @@ if (!file.exists(features_path)) {
 features <- read_csv(features_path, show_col_types = FALSE)
 message("Wczytano cechy dla ", nrow(features), " użytkowników")
 
-# =============================================================================
-# 2) Calculate Scores
-# =============================================================================
+expected_cols <- c(
+  "user_id",
+  as.vector(outer(paste0("feat_", letters[1:7]), c("m", "k"), paste, sep = "_"))
+)
+missing_cols <- setdiff(expected_cols, names(features))
+if (length(missing_cols) > 0) {
+  stop("Brak wymaganych kolumn wejściowych: ", paste(missing_cols, collapse = ", "))
+}
 
 predictions <- features |>
   mutate(
-    # Weighted sums (using lowercase column names from Postgres)
-    score_m = (feat_a_m * WEIGHT_A) +
-              (feat_b_m * WEIGHT_B) +
-              (feat_c_m * WEIGHT_C) +
-              (feat_d_m * WEIGHT_D) +
-              (feat_e_m * WEIGHT_E) +
-              (feat_f_m * WEIGHT_F) +
-              (feat_g_m * WEIGHT_G),
+    score_m = (feat_a_m * FEATURE_WEIGHTS[["a"]]) +
+              (feat_b_m * FEATURE_WEIGHTS[["b"]]) +
+              (feat_c_m * FEATURE_WEIGHTS[["c"]]) +
+              (feat_d_m * FEATURE_WEIGHTS[["d"]]) +
+              (feat_e_m * FEATURE_WEIGHTS[["e"]]) +
+              (feat_f_m * FEATURE_WEIGHTS[["f"]]) +
+              (feat_g_m * FEATURE_WEIGHTS[["g"]]),
 
-    score_k = (feat_a_k * WEIGHT_A) +
-              (feat_b_k * WEIGHT_B) +
-              (feat_c_k * WEIGHT_C) +
-              (feat_d_k * WEIGHT_D) +
-              (feat_e_k * WEIGHT_E) +
-              (feat_f_k * WEIGHT_F) +
-              (feat_g_k * WEIGHT_G),
+    score_k = (feat_a_k * FEATURE_WEIGHTS[["a"]]) +
+              (feat_b_k * FEATURE_WEIGHTS[["b"]]) +
+              (feat_c_k * FEATURE_WEIGHTS[["c"]]) +
+              (feat_d_k * FEATURE_WEIGHTS[["d"]]) +
+              (feat_e_k * FEATURE_WEIGHTS[["e"]]) +
+              (feat_f_k * FEATURE_WEIGHTS[["f"]]) +
+              (feat_g_k * FEATURE_WEIGHTS[["g"]]),
 
     score_total = score_m + score_k,
 
-    # Confidence ratio (0.0 - 1.0)
-    # If total is 0, confidence is 0
     confidence = if_else(score_total > 0,
                          pmax(score_m, score_k) / score_total,
                          0),
 
-    # Prediction Logic
     new_pred_gender = case_when(
-      score_total == 0 ~ "unknown",
+      score_total < MIN_SCORE_TOTAL ~ "unknown",
       confidence < CONFIDENCE_THRESHOLD ~ "unknown",
       score_m > score_k ~ "M",
       score_k > score_m ~ "K",
-      TRUE ~ "unknown" # Tie with high confidence (rare)
+      TRUE ~ "unknown"
     )
   )
-
-# =============================================================================
-# 3) Summary stats
-# =============================================================================
 
 summary_counts <- predictions |>
   count(new_pred_gender) |>
@@ -107,14 +73,11 @@ classified_count <- sum(predictions$new_pred_gender != "unknown")
 total_count <- nrow(predictions)
 message("Pokrycie (coverage): ", round(classified_count / total_count * 100, 1), "%")
 
-# Ambiguous cases (evidence exists but conflicting or weak)
 ambiguous <- predictions |>
-  filter(new_pred_gender == "unknown", score_total > 0) |>
+  filter(new_pred_gender == "unknown", score_total >= MIN_SCORE_TOTAL) |>
   nrow()
 message("Użytkownicy z niejednoznaczną predykcją (dowody, ale poniżej progu): ", ambiguous)
 
-# Feature contribution analysis (how many predicted users rely on which feature)
-# We check if a user has non-zero count for a feature group
 contribution <- predictions |>
   filter(new_pred_gender != "unknown") |>
   summarise(
@@ -137,10 +100,6 @@ message("  Ma cechę E (future):           ", contribution$has_feat_e, " / ", co
 message("  Ma cechę F (conditional):      ", contribution$has_feat_f, " / ", contribution$n_predicted)
 message("  Ma cechę G (czuć się+adj):     ", contribution$has_feat_g, " / ", contribution$n_predicted)
 
-# =============================================================================
-# Save output
-# =============================================================================
-
 output_dir <- here::here("01_gender_prediction_improvement", "output", "data")
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
@@ -152,6 +111,16 @@ output <- predictions |>
 
 output_path <- file.path(output_dir, "new_gender_predictions.csv")
 write_csv(output, output_path)
+
+config_used <- tibble(
+  key = c(
+    paste0("weight_", names(FEATURE_WEIGHTS)),
+    "confidence_threshold",
+    "min_score_total"
+  ),
+  value = c(unname(FEATURE_WEIGHTS), CONFIDENCE_THRESHOLD, MIN_SCORE_TOTAL)
+)
+write_csv(config_used, file.path(output_dir, "prediction_config_used.csv"))
 
 message("Zapisano: ", output_path)
 message("02_predict_gender.R zakończone: ", Sys.time())

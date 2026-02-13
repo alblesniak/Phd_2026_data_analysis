@@ -12,6 +12,9 @@
 
 library(here)
 
+source(here("01_gender_prediction_improvement", "scripts", "config.R"))
+set.seed(PIPELINE_SEED)
+
 message("============================================")
 message(" Predykcja płci gramatycznej - ulepszenie")
 message(" Start: ", Sys.time())
