@@ -22,6 +22,8 @@ CUTOFF_DATE <- "2025-12-31 23:59:59"
 # --- Connect to database ---
 source(here::here("database/db_connection.R"))
 
+with_db({
+
 cat("\n")
 cat("=============================================================================\n")
 cat("CLEANUP: Usuwanie danych po 31 grudnia 2025\n")
@@ -247,5 +249,4 @@ cat(sprintf("Najpóźniejszy post: %s\n", as.character(final_stats$latest_post))
 cat("\n✓ Cleanup zakończony pomyślnie!\n")
 cat("  Wszystkie dane po 31 grudnia 2025 zostały usunięte.\n\n")
 
-# --- Disconnect ---
-dbDisconnect(con)
+})

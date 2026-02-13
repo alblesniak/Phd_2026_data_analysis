@@ -7,7 +7,6 @@
 # Against Ground Truth — users.gender (where 'M' or 'K')
 #
 # NEW: Includes Optional Threshold Sensitivity Analysis (0.1 - 0.9)
-# FIX: Detaches bit64 with unload=FALSE to prevent dependency warnings
 # =============================================================================
 
 library(dplyr)
@@ -28,6 +27,8 @@ source(here::here("00_basic_corpus_statistics", "scripts", "00_setup_theme.R"))
 # --- Database connection ---
 source(here::here("database", "db_connection.R"))
 
+with_db({
+
 message("\n=== EWALUACJA I PORÓWNANIE MODELI PREDYKCJI PŁCI === ")
 message("Start: ", Sys.time())
 
@@ -44,7 +45,6 @@ users_db_raw <- dbGetQuery(con, "
   FROM users
 ")
 
-dbDisconnect(con)
 message("Dane z bazy pobrane (", nrow(users_db_raw), " wierszy).")
 
 # FIX: Convert integer64 to numeric immediately
@@ -52,15 +52,6 @@ users_db <- users_db_raw |>
   as_tibble() |>
   mutate(user_id = as.numeric(user_id))
 
-# CRITICAL FIX: Detach bit64/bit if loaded to restore base '==' and '%in%' operators
-# We use unload=FALSE because readr/RPostgres might need the namespace loaded.
-if ("package:bit64" %in% search()) {
-  message("Detaching bit64 to restore base comparison operators...")
-  detach("package:bit64", unload = FALSE)
-}
-if ("package:bit" %in% search()) {
-  detach("package:bit", unload = FALSE)
-}
 
 # Load New predictions
 new_preds_path <- here::here("01_gender_prediction_improvement", "output", "data", "new_gender_predictions.csv")
@@ -237,3 +228,4 @@ if (RUN_THRESHOLD_ANALYSIS) {
 }
 
 message("03_evaluate_comparison.R zakończone: ", Sys.time())
+})
