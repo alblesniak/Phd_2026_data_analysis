@@ -1,7 +1,10 @@
 # =============================================================================
 # 00_setup_theme.R - Academic Theme for PhD Thesis (LaTeX/Overleaf)
 # =============================================================================
-# System wizualny "PhD-Modern" — zoptymalizowany pod skład w LaTeX.
+# System wizualny wzorowany na stylistyce Alberta Rappa
+# (https://albert-rapp.de/posts/ggplot2-tips/22_diverging_bar_plot)
+# Zasady: radykalny minimalizm, bezpośrednie etykietowanie danych,
+# brak legend, celowe użycie koloru, czysta typografia.
 # Konwencja: tytuły i opisy umieszczane w \caption{} w LaTeX,
 # dlatego eksport PDF automatycznie usuwa tytuł, podtytuł i adnotację.
 # =============================================================================
@@ -10,79 +13,87 @@ library(ggplot2)
 library(dplyr)
 library(scales)
 library(grid)
+library(ggtext)
 
-# Renderowanie czcionek przez showtext (umożliwia użycie LMR/CMR)
+# --- Czcionki (showtext + Google Fonts) ---
 library(showtext)
+tryCatch({
+  font_add_google("Source Sans Pro", "Source Sans Pro")
+  phd_font_family <- "Source Sans Pro"
+}, error = function(e) {
+  phd_font_family <<- "sans"
+  message("Source Sans Pro unavailable, using system sans-serif")
+})
 showtext_auto()
 showtext_opts(dpi = 300)
 
-# Use the default system serif font family available in R for reproducible plots.
-# Avoid registering local OTFs or forcing LaTeX-specific fonts; plots will use
-# the standard `serif` family which is portable across environments.
-phd_font_family <- "serif"
 message("Font for plots: ", phd_font_family)
-# --- 1. Paleta "Academic Slate" ---
-# Kolory o zróżnicowanej luminancji — czytelne również w druku czarno-białym.
+
+# --- 1. Kolory ---
+# Kolory tekstu i akcentów
+text_color_dark  <- "#333333"
+text_color_light <- "white"
+grey_color       <- "#bdbfc1"
+line_color       <- "grey25"
+
+# Paleta forów — inspirowana stylistyką A. Rappa: stonowane, wyciszone tony,
+# zróżnicowana luminancja, czytelne w druku czarno-białym.
 forum_colors <- c(
-  "Z Chrystusem"    = "#2C3E50",  # Głęboki granat
-  "radiokatolik.pl" = "#A93226",  # Ceglana czerwień
-  "Dolina Modlitwy" = "#1E8449",  # Ciemna zieleń
-  "wiara.pl"        = "#2E86C1"   # Stalowy niebieski
+  "Z Chrystusem"    = "#507088",  # stonowany stalowy błękit (z tutorialu Rappa)
+  "radiokatolik.pl" = "#d2a940",  # ciepłe złoto (z tutorialu Rappa)
+  "Dolina Modlitwy" = "#6a8e6e",  # wyciszony szałwiowy zielony
+  "wiara.pl"        = "#a05a5a"   # wyciszony ceglasty/dusty rose
 )
 
 gender_colors <- c(
-  "Mężczyzna"       = "#2E86C1",
-  "Kobieta"         = "#A93226",
-  "Nieokreślona"    = "#7F8C8D",
-  "Brak danych"     = "#BDC3C7"
+  "Mężczyzna"       = "#507088",  # stalowy błękit
+  "Kobieta"         = "#d2a940",  # ciepłe złoto
+  "Nieokreślona"    = "#bdbfc1",
+  "Brak danych"     = "#bdbfc1"   # szary z tutorialu
 )
 
-# --- 2. Motyw graficzny (PhD-Modern) ---
-# Zoptymalizowany pod skład w LaTeX/Overleaf.
-# Konwencja: tytuły i opisy w \caption{}, PDF eksportowany bez nich.
-theme_phd <- function(base_size = 11, base_family = phd_font_family) {
+# --- 2. Motyw graficzny ---
+# Wzorowany na Albert Rapp: theme_minimal z agresywnym usuwaniem dekoracji.
+# Domyślnie: brak siatki, brak legend, brak tytułów osi, brak ticków.
+theme_phd <- function(base_size = 8, base_family = phd_font_family) {
   theme_minimal(base_size = base_size, base_family = base_family) %+replace%
     theme(
-      # Tytuły (widoczne w PNG; PDF je usuwa — por. save_plot_phd)
-      plot.title       = element_text(size = rel(1.15), face = "bold",
-                                      hjust = 0, margin = margin(b = 8)),
-      plot.subtitle    = element_text(size = rel(0.85), colour = "grey30",
-                                      hjust = 0, margin = margin(b = 12)),
-      plot.caption     = element_text(size = rel(0.75), colour = "grey50",
-                                      hjust = 1, margin = margin(t = 8)),
+      # --- Tytuły (widoczne w PNG; PDF je usuwa — por. save_plot_phd) ---
+      plot.title    = element_text(
+        size = 12, face = "bold", hjust = 0,
+        margin = margin(t = 2, b = 2, unit = "mm")
+      ),
+      plot.subtitle = element_text(
+        size = 8, colour = text_color_dark, face = "italic",
+        hjust = 0, margin = margin(b = 2, unit = "mm")
+      ),
+      plot.caption  = element_markdown(
+        size = 6, colour = text_color_dark,
+        hjust = 0, margin = margin(t = 2, b = 2, unit = "mm"),
+        lineheight = 1.1
+      ),
 
-      # Osie — bez bolda w tytułach (mniej dominujące)
-      axis.title       = element_text(size = rel(0.95)),
-      axis.title.y     = element_text(margin = margin(r = 12), angle = 90),
-      axis.title.x     = element_text(margin = margin(t = 12)),
+      # --- Osie: minimalne ---
+      axis.title       = element_blank(),
+      axis.text        = element_text(size = 7, colour = text_color_dark),
+      axis.line        = element_blank(),
+      axis.ticks       = element_blank(),
+      axis.ticks.length = unit(0, "pt"),
 
-      # Etykiety osi
-      axis.text        = element_text(size = rel(0.85), colour = "grey15"),
-      axis.text.x      = element_text(margin = margin(t = 4)),
-      axis.text.y      = element_text(margin = margin(r = 4), hjust = 1),
-
-      # Linie i kreski osi — delikatny grafit zamiast czystej czerni
-      axis.line        = element_line(colour = "grey25", linewidth = 0.4),
-      axis.ticks       = element_line(colour = "grey25", linewidth = 0.35),
-      axis.ticks.length = unit(3, "pt"),
-
-      # Siatka — bardzo subtelna
-      panel.grid.major = element_line(colour = "grey92", linewidth = 0.25),
+      # --- Siatka: usunięta całkowicie ---
+      panel.grid.major = element_blank(),
       panel.grid.minor = element_blank(),
       panel.border     = element_blank(),
-      panel.spacing    = unit(1.2, "lines"),
+      panel.spacing    = unit(0, "pt"),
 
-      # Legenda — większe klucze, lepsze odstępy
-      legend.position  = "bottom",
-      legend.title     = element_blank(),
-      legend.text      = element_text(size = rel(0.88)),
-      legend.key.size  = unit(1.1, "lines"),
-      legend.key.width = unit(1.6, "lines"),
-      legend.margin    = margin(t = 6),
-      legend.box.margin = margin(t = 0),
+      # --- Legenda: domyślnie ukryta (etykietowanie bezpośrednie) ---
+      legend.position = "none",
 
-      # Marginesy wykresu — więcej „oddechu"
-      plot.margin      = margin(15, 15, 15, 15)
+      # --- Marginesy ---
+      plot.margin = margin(10, 10, 10, 10),
+
+      # --- Facety ---
+      strip.text = element_blank()
     )
 }
 
@@ -134,4 +145,4 @@ fmt_number <- function(x) {
   format(x, big.mark = " ", scientific = FALSE, trim = TRUE)
 }
 
-message("Theme loaded: PhD-Modern (serif, Academic Slate palette)")
+message("Theme loaded: PhD-Rapp (Source Sans Pro, minimalist aesthetic)")

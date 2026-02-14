@@ -35,52 +35,72 @@ forum_summary_total <- forum_summary |>
 forum_summary_full <- bind_rows(forum_summary, forum_summary_total)
 save_table(forum_summary_full, "01_podsumowanie_korpusu")
 
-# 2. Wykres słupkowy: Posty
+# =============================================================================
+# 2. Wykres słupkowy: Posty wg forum
+# =============================================================================
+# Styl: bezpośrednie etykiety na słupkach, brak siatki, brak osi x,
+# brak tytułów osi, brak legendy (kolor = identyfikator forum).
+
+bar_width <- 0.75
+
 plot_data <- posts_per_forum |>
   mutate(
     procent = n_posts / sum(n_posts) * 100,
     label_txt = paste0(fmt_number(n_posts), " (", round(procent, 1), "%)")
   )
 
-p_posts <- ggplot(plot_data, aes(x = reorder(forum, n_posts), y = n_posts, fill = forum)) +
-  geom_col(width = 0.7, show.legend = FALSE) +
-  geom_text(aes(label = label_txt), hjust = -0.1, size = 3.2, family = phd_font_family) +
+p_posts <- ggplot(plot_data,
+                  aes(x = reorder(forum, n_posts), y = n_posts, fill = forum)) +
+  geom_col(width = bar_width) +
+  geom_text(
+    aes(label = label_txt),
+    hjust = -0.05, size = 2.5,
+    family = phd_font_family, fontface = "bold",
+    colour = text_color_dark
+  ) +
   scale_fill_manual(values = forum_colors) +
-  scale_y_continuous(labels = fmt_number, expand = expansion(mult = c(0, 0.3))) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.35))) +
   coord_flip() +
   labs(
     title = "Rozkład postów w korpusie wg forum",
     subtitle = paste0("Łącznie: ", fmt_number(total_posts)),
-    x = NULL,
-    y = "Liczba postów"
+    x = NULL, y = NULL
   ) +
   theme_phd() +
-  theme(panel.grid.major.y = element_blank())
+  theme(axis.text.x = element_blank())
 
-save_plot_phd(p_posts, "01_posty_wg_forum")
+save_plot_phd(p_posts, "01_posty_wg_forum", height_cm = 7)
 
-# 3. Wykres słupkowy: Tokeny
+# =============================================================================
+# 3. Wykres słupkowy: Tokeny wg forum
+# =============================================================================
+
 plot_data_tok <- tokens_per_forum |>
   mutate(
     procent = n_tokens / sum(n_tokens) * 100,
     label_txt = paste0(fmt_number(n_tokens), " (", round(procent, 1), "%)")
   )
 
-p_tokens <- ggplot(plot_data_tok, aes(x = reorder(forum, n_tokens), y = n_tokens, fill = forum)) +
-  geom_col(width = 0.7, show.legend = FALSE) +
-  geom_text(aes(label = label_txt), hjust = -0.1, size = 3.2, family = phd_font_family) +
+p_tokens <- ggplot(plot_data_tok,
+                   aes(x = reorder(forum, n_tokens), y = n_tokens, fill = forum)) +
+  geom_col(width = bar_width) +
+  geom_text(
+    aes(label = label_txt),
+    hjust = -0.05, size = 2.5,
+    family = phd_font_family, fontface = "bold",
+    colour = text_color_dark
+  ) +
   scale_fill_manual(values = forum_colors) +
-  scale_y_continuous(labels = fmt_number, expand = expansion(mult = c(0, 0.3))) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.35))) +
   coord_flip() +
   labs(
     title = "Rozkład tokenów w korpusie wg forum",
     subtitle = paste0("Łącznie: ", fmt_number(total_tokens)),
-    x = NULL,
-    y = "Liczba tokenów"
+    x = NULL, y = NULL
   ) +
   theme_phd() +
-  theme(panel.grid.major.y = element_blank())
+  theme(axis.text.x = element_blank())
 
-save_plot_phd(p_tokens, "02_tokeny_wg_forum")
+save_plot_phd(p_tokens, "02_tokeny_wg_forum", height_cm = 7)
 
 message("02_general_stats.R completed.")
